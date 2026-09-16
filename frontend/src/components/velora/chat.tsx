@@ -180,13 +180,56 @@ export function MessageBubble({ message }: { message: Message }) {
   );
 }
 
-export function MessageComposer({ placeholder = "Message…" }: { placeholder?: string }) {
+export function MessageComposer({
+  placeholder = "Message…",
+  conversationId,
+  onMessageSent,
+}: {
+  placeholder?: string;
+  conversationId: string;
+  onMessageSent: (message: any) => void;
+}) {
   const [value, setValue] = useState("");
 
-  const send = () => {
-    if (!value.trim()) return;
-    toast.success("Message sent", { description: "Encrypted end-to-end" });
-    setValue("");
+  const send = async () => {
+    const text = value.trim();
+
+    if (!text) return;
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      toast.error("Please log in again");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          conversationId,
+          text,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.message || "Failed to send message");
+        return;
+      }
+
+      toast.success("Message sent");
+      setValue("");
+      onMessageSent(data.data);
+    } catch (error) {
+      console.error("Send message error:", error);
+      toast.error("Unable to send message");
+    }
   };
 
   return (

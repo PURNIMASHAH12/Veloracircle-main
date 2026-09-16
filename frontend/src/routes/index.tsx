@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowRight, Lock, ShieldCheck, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,10 @@ function NodeArt() {
 
 function WelcomePage() {
   const navigate = useNavigate();
-
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   return (
     <div className="mesh-bg bg-background relative min-h-[100dvh] overflow-hidden">
       <div className="mx-auto grid min-h-[100dvh] max-w-7xl grid-cols-1 gap-10 px-5 py-8 lg:grid-cols-[1.1fr_minmax(0,440px)] lg:items-center lg:gap-16 lg:px-10">
@@ -97,14 +101,52 @@ function WelcomePage() {
 
           <form
             className="mt-7 space-y-4"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              void navigate({ to: "/home" });
+
+              setError("");
+              setLoading(true);
+
+              try {
+                const response = await fetch("http://localhost:5000/api/auth/login", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    email,
+                    password,
+                  }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                  setError(data.message || "Login failed");
+                  return;
+                }
+
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+
+                void navigate({ to: "/home" });
+              } catch (error) {
+                setError("Unable to connect to the server");
+              } finally {
+                setLoading(false);
+              }
             }}
           >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@company.com" autoComplete="email" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@company.com"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -121,11 +163,18 @@ function WelcomePage() {
                 type="password"
                 placeholder="••••••••"
                 autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-
-            <Button type="submit" className="h-11 w-full">
-              Continue <ArrowRight className="h-4 w-4" />
+            {error && (
+              <p className="text-destructive text-sm">
+                {error}
+              </p>
+            )}
+            <Button type="submit" className="h-11 w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Continue"}
+              {!loading && <ArrowRight className="h-4 w-4" />}
             </Button>
 
             <div className="text-muted-foreground flex items-center gap-3 text-[11px]">
