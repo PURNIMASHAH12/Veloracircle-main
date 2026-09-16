@@ -8,6 +8,7 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import socket from "../socket";
 import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
@@ -99,6 +100,24 @@ function MessagesPage() {
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
 
   // --------------------------------------------------
+  // Socket connection
+  // --------------------------------------------------
+
+  useEffect(() => {
+    socket.connect();
+    socket.on("connect", () => {
+    });
+    socket.on("disconnect", () => {
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.disconnect();
+    };
+  }, []);
+
+  // --------------------------------------------------
   // Load conversations
   // --------------------------------------------------
 
@@ -142,15 +161,10 @@ function MessagesPage() {
   // --------------------------------------------------
 
   useEffect(() => {
-    console.log("ACTIVE CONVERSATION ID:", activeId);
-
     if (!activeId) {
       setBackendMessages([]);
       return;
     }
-
-    console.log("LOADING MESSAGES FOR:", activeId);
-
     const loadMessages = async () => {
       const token = localStorage.getItem("token");
 
@@ -171,9 +185,6 @@ function MessagesPage() {
         }
 
         const data = await response.json();
-
-        console.log("MESSAGES API RESPONSE:", data);
-
         setBackendMessages(data.data);
       } catch (error) {
         console.error("Failed to load messages:", error);
@@ -184,8 +195,90 @@ function MessagesPage() {
   }, [activeId]);
 
   // --------------------------------------------------
+  // Join active conversation socket room
+  // --------------------------------------------------
+  useEffect(() => {
+    if (!activeId) return;
+
+    const joinRoom = () => {
+      socket.emit("joinConversation", activeId);
+    };
+
+    if (socket.connected) {
+      joinRoom();
+    } else {
+      socket.once("connect", joinRoom);
+    }
+
+    return () => {
+      socket.off("connect", joinRoom);
+    };
+  }, [activeId]);
+
+  // --------------------------------------------------
+  // Receive real-time messages
+  // --------------------------------------------------
+
+  useEffect(() => {
+    const handleNewMessage = (message: BackendMessage) => {
+      const messageConversationId =
+        typeof message.conversation === "string"
+          ? message.conversation
+          : (message.conversation as any)?._id;
+      if (messageConversationId !== activeId) {
+        return;
+      }
+
+      setBackendMessages((previous) => {
+        const updatedMessages = [...previous, message];
+
+        return updatedMessages.filter(
+          (item, index, array) =>
+            array.findIndex(
+              (existing) => existing._id === item._id,
+            ) === index,
+        );
+      });
+
+      setBackendConversations((previous) =>
+        previous
+          .map((conversation) =>
+            conversation.id === messageConversationId
+              ? {
+                ...conversation,
+                latestMessage: {
+                  text: message.text,
+                  createdAt: message.createdAt,
+                  sender: message.sender._id,
+                },
+              }
+              : conversation,
+          )
+          .sort(
+            (a, b) =>
+              new Date(
+                b.latestMessage?.createdAt || 0,
+              ).getTime() -
+              new Date(
+                a.latestMessage?.createdAt || 0,
+              ).getTime(),
+          ),
+      );
+    };
+
+    console.log("REGISTERING NEW MESSAGE LISTENER");
+
+    socket.on("newMessage", handleNewMessage);
+
+    return () => {
+      console.log("REMOVING NEW MESSAGE LISTENER");
+      socket.off("newMessage", handleNewMessage);
+    };
+  }, [activeId]);
+  // --------------------------------------------------
   // Search users
   // --------------------------------------------------
+
 
   useEffect(() => {
     const searchUsers = async () => {
@@ -548,10 +641,16 @@ function MessagesPage() {
               placeholder={`Message ${activeName}…`}
               conversationId={activeId || ""}
               onMessageSent={(message) => {
-                setBackendMessages((previous) => [
-                  ...previous,
-                  message,
-                ]);
+                setBackendMessages((previous) => {
+                  const updatedMessages = [...previous, message];
+
+                  return updatedMessages.filter(
+                    (item, index, array) =>
+                      array.findIndex(
+                        (existing) => existing._id === item._id,
+                      ) === index,
+                  );
+                });
                 setBackendConversations((previous) =>
                   previous
                     .map((conversation) =>

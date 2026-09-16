@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import Conversation from "../models/Conversation";
 import Message from "../models/Message";
 import { AuthRequest } from "../middleware/Auth";
-
+import { getIO } from "../socket";
 // Send a new message
 export const sendMessage = async (
   req: AuthRequest,
@@ -42,7 +42,7 @@ export const sendMessage = async (
       return;
     }
 
-   const userId = new mongoose.Types.ObjectId(req.user.userId);
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
 
     const isParticipant = conversation.participants.some(
       (participant) => participant.toString() === userId.toString()
@@ -68,7 +68,9 @@ export const sendMessage = async (
     const populatedMessage = await Message.findById(message._id)
       .populate("sender", "name email")
       .populate("conversation");
-
+    getIO()
+      .to(`conversation:${conversationId}`)
+      .emit("newMessage", populatedMessage);
     res.status(201).json({
       message: "Message sent successfully",
       data: populatedMessage,
@@ -113,7 +115,7 @@ export const getMessages = async (
       return;
     }
 
-   const userId = new mongoose.Types.ObjectId(req.user.userId);
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
 
     const isParticipant = conversation.participants.some(
       (participant) => participant.toString() === userId.toString()
