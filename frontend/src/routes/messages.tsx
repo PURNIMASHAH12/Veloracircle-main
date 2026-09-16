@@ -1,50 +1,83 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowLeft,
-  MoreHorizontal,
+  MoreVertical,
   Phone,
   Plus,
   Search,
   Video,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import socket from "../socket";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+
 import { AppShell } from "@/components/velora/app-shell";
+
 import {
   MessageBubble,
   MessageComposer,
 } from "@/components/velora/chat";
+
 import {
   IconButton,
   PrivacyBadge,
 } from "@/components/velora/primitives";
+
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/messages")({
-  head: () => ({
-    meta: [
-      { title: "Messages — Velora Circle" },
-      {
-        name: "description",
-        content:
-          "Private one-to-one and Circle conversations with hidden participant information and encrypted delivery.",
-      },
-      {
-        property: "og:title",
-        content: "Messages — Velora Circle",
-      },
-      {
-        property: "og:description",
-        content: "Private conversations without unnecessary visibility.",
-      },
-    ],
-  }),
-  component: MessagesPage,
-});
+import socket from "../socket";
+
+export const Route =
+  createFileRoute("/messages")({
+    head: () => ({
+      meta: [
+        {
+          title:
+            "Messages — Velora Circle",
+        },
+        {
+          name: "description",
+          content:
+            "Private one-to-one and Circle conversations with hidden participant information and encrypted delivery.",
+        },
+        {
+          property: "og:title",
+          content:
+            "Messages — Velora Circle",
+        },
+        {
+          property:
+            "og:description",
+          content:
+            "Private conversations without unnecessary visibility.",
+        },
+      ],
+    }),
+
+    component: MessagesPage,
+  });
+
+/* =====================================================
+   TYPES
+===================================================== */
 
 type BackendMessage = {
   _id: string;
@@ -61,6 +94,9 @@ type BackendMessage = {
 type BackendConversation = {
   id: string;
   type: "direct";
+  unreadCount: number;
+  pinned: boolean;
+
   otherUser: {
     id: string;
     name: string;
@@ -80,205 +116,479 @@ type SearchUser = {
   email: string;
 };
 
+/* =====================================================
+   PAGE
+===================================================== */
+
 function MessagesPage() {
-  const [backendConversations, setBackendConversations] = useState<
+  const [
+    backendConversations,
+    setBackendConversations,
+  ] = useState<
     BackendConversation[]
   >([]);
 
-  const [backendMessages, setBackendMessages] = useState<BackendMessage[]>(
+  const [
+    backendMessages,
+    setBackendMessages,
+  ] = useState<BackendMessage[]>(
     [],
   );
 
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] =
+    useState<string | null>(null);
 
-  const [tab, setTab] = useState("all");
-  const [query, setQuery] = useState("");
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [tab, setTab] =
+    useState("all");
 
-  const [showNewConversation, setShowNewConversation] = useState(false);
-  const [userSearch, setUserSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [query, setQuery] =
+    useState("");
 
-  // --------------------------------------------------
-  // Socket connection
-  // --------------------------------------------------
+  const [
+    messageSearch,
+    setMessageSearch,
+  ] = useState("");
+
+  const [
+    showMessageSearch,
+    setShowMessageSearch,
+  ] = useState(false);
+
+  const [
+    mobileOpen,
+    setMobileOpen,
+  ] = useState(false);
+
+  const [
+    showNewConversation,
+    setShowNewConversation,
+  ] = useState(false);
+
+  const [
+    userSearch,
+    setUserSearch,
+  ] = useState("");
+
+  const [
+    searchResults,
+    setSearchResults,
+  ] = useState<SearchUser[]>([]);
+
+  const receivedMessageIds =
+    useRef<Set<string>>(
+      new Set(),
+    );
+  const messagesContainerRef =
+    useRef<HTMLDivElement | null>(null);
+
+  /* =====================================================
+     SOCKET CONNECTION
+  ===================================================== */
 
   useEffect(() => {
+    const currentUser = JSON.parse(
+      localStorage.getItem("user") ||
+      "{}",
+    );
+
+    const currentUserId =
+      currentUser.id ||
+      currentUser._id;
+
+    if (!currentUserId) {
+      return;
+    }
+
     socket.connect();
-    socket.on("connect", () => {
-    });
-    socket.on("disconnect", () => {
-    });
+
+    const joinUserRoom = () => {
+      socket.emit(
+        "joinUser",
+        currentUserId,
+      );
+    };
+
+    socket.on(
+      "connect",
+      joinUserRoom,
+    );
+
+    if (socket.connected) {
+      joinUserRoom();
+    }
 
     return () => {
-      socket.off("connect");
-      socket.off("disconnect");
+      socket.off(
+        "connect",
+        joinUserRoom,
+      );
+
       socket.disconnect();
     };
   }, []);
 
-  // --------------------------------------------------
-  // Load conversations
-  // --------------------------------------------------
+  /* =====================================================
+     LOAD CONVERSATIONS
+  ===================================================== */
 
   useEffect(() => {
-    const loadConversations = async () => {
-      const token = localStorage.getItem("token");
+    const loadConversations =
+      async () => {
+        const token =
+          localStorage.getItem(
+            "token",
+          );
 
-      if (!token) return;
-
-      try {
-        const response = await fetch(
-          "http://localhost:5000/api/conversations",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to load conversations");
+        if (!token) {
+          return;
         }
 
-        const data = await response.json();
+        try {
+          const response =
+            await fetch(
+              "http://localhost:5000/api/conversations",
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            );
 
-        setBackendConversations(data.conversations);
+          if (!response.ok) {
+            throw new Error(
+              "Failed to load conversations",
+            );
+          }
 
-        if (data.conversations.length > 0) {
-          setActiveId(data.conversations[0].id);
+          const data =
+            await response.json();
+
+          setBackendConversations(
+            data.conversations,
+          );
+
+          if (
+            data.conversations.length >
+            0
+          ) {
+            setActiveId(
+              data.conversations[0].id,
+            );
+          }
+        } catch (error) {
+          console.error(
+            "Failed to load conversations:",
+            error,
+          );
         }
-      } catch (error) {
-        console.error("Failed to load conversations:", error);
-      }
-    };
+      };
 
-    loadConversations();
+    void loadConversations();
   }, []);
 
-  // --------------------------------------------------
-  // Load messages for active conversation
-  // --------------------------------------------------
+  /* =====================================================
+     LOAD MESSAGES
+  ===================================================== */
 
   useEffect(() => {
     if (!activeId) {
       setBackendMessages([]);
       return;
     }
-    const loadMessages = async () => {
-      const token = localStorage.getItem("token");
 
-      if (!token) return;
+    const loadMessages =
+      async () => {
+        const token =
+          localStorage.getItem(
+            "token",
+          );
 
-      try {
-        const response = await fetch(
-          `http://localhost:5000/api/messages/${activeId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to load messages");
+        if (!token) {
+          return;
         }
 
-        const data = await response.json();
-        setBackendMessages(data.data);
-      } catch (error) {
-        console.error("Failed to load messages:", error);
-      }
-    };
+        try {
+          const response =
+            await fetch(
+              `http://localhost:5000/api/messages/${activeId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            );
 
-    loadMessages();
+          if (!response.ok) {
+            throw new Error(
+              "Failed to load messages",
+            );
+          }
+
+          const data =
+            await response.json();
+
+          setBackendMessages(
+            data.data,
+          );
+
+          const readResponse =
+            await fetch(
+              `http://localhost:5000/api/conversations/${activeId}/read`,
+              {
+                method: "PATCH",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            );
+
+          if (!readResponse.ok) {
+            throw new Error(
+              "Failed to mark conversation as read",
+            );
+          }
+
+          setBackendConversations(
+            (previous) =>
+              previous.map(
+                (conversation) =>
+                  conversation.id ===
+                    activeId
+                    ? {
+                      ...conversation,
+                      unreadCount: 0,
+                    }
+                    : conversation,
+              ),
+          );
+        } catch (error) {
+          console.error(
+            "Failed to load messages:",
+            error,
+          );
+        }
+      };
+
+    void loadMessages();
   }, [activeId]);
 
-  // --------------------------------------------------
-  // Join active conversation socket room
-  // --------------------------------------------------
+  /* =====================================================
+     JOIN ACTIVE CONVERSATION
+  ===================================================== */
+
   useEffect(() => {
-    if (!activeId) return;
+    if (!activeId) {
+      return;
+    }
 
     const joinRoom = () => {
-      socket.emit("joinConversation", activeId);
+      socket.emit(
+        "joinConversation",
+        activeId,
+      );
     };
 
     if (socket.connected) {
       joinRoom();
     } else {
-      socket.once("connect", joinRoom);
+      socket.once(
+        "connect",
+        joinRoom,
+      );
     }
 
     return () => {
-      socket.off("connect", joinRoom);
+      socket.off(
+        "connect",
+        joinRoom,
+      );
     };
   }, [activeId]);
 
-  // --------------------------------------------------
-  // Receive real-time messages
-  // --------------------------------------------------
+  /* =====================================================
+     REAL-TIME NEW MESSAGE
+  ===================================================== */
 
   useEffect(() => {
-    const handleNewMessage = (message: BackendMessage) => {
+    const handleNewMessage = (
+      message: BackendMessage,
+    ) => {
       const messageConversationId =
-        typeof message.conversation === "string"
-          ? message.conversation
-          : (message.conversation as any)?._id;
-      if (messageConversationId !== activeId) {
+        message.conversation;
+
+      if (!messageConversationId) {
         return;
       }
 
-      setBackendMessages((previous) => {
-        const updatedMessages = [...previous, message];
+      if (
+        receivedMessageIds.current.has(
+          message._id,
+        )
+      ) {
+        return;
+      }
 
-        return updatedMessages.filter(
-          (item, index, array) =>
-            array.findIndex(
-              (existing) => existing._id === item._id,
-            ) === index,
+      receivedMessageIds.current.add(
+        message._id,
+      );
+
+      const currentUser = JSON.parse(
+        localStorage.getItem(
+          "user",
+        ) || "{}",
+      );
+
+      const currentUserId =
+        currentUser.id ||
+        currentUser._id;
+
+      const isOwnMessage =
+        message.sender._id ===
+        currentUserId;
+
+      const isActiveConversation =
+        messageConversationId ===
+        activeId;
+
+      if (isActiveConversation) {
+        setBackendMessages(
+          (previous) => {
+            const updatedMessages =
+              [
+                ...previous,
+                message,
+              ];
+
+            return updatedMessages.filter(
+              (
+                item,
+                index,
+                array,
+              ) =>
+                array.findIndex(
+                  (existing) =>
+                    existing._id ===
+                    item._id,
+                ) === index,
+            );
+          },
         );
-      });
+      }
 
-      setBackendConversations((previous) =>
-        previous
-          .map((conversation) =>
-            conversation.id === messageConversationId
-              ? {
-                ...conversation,
-                latestMessage: {
-                  text: message.text,
-                  createdAt: message.createdAt,
-                  sender: message.sender._id,
-                },
-              }
-              : conversation,
-          )
-          .sort(
-            (a, b) =>
-              new Date(
-                b.latestMessage?.createdAt || 0,
-              ).getTime() -
-              new Date(
-                a.latestMessage?.createdAt || 0,
-              ).getTime(),
+      setBackendConversations(
+        (previous) =>
+          previous
+            .map(
+              (conversation) =>
+                conversation.id ===
+                  messageConversationId
+                  ? {
+                    ...conversation,
+
+                    unreadCount:
+                      isActiveConversation ||
+                        isOwnMessage
+                        ? 0
+                        : conversation.unreadCount +
+                        1,
+
+                    latestMessage: {
+                      text: message.text,
+                      createdAt:
+                        message.createdAt,
+                      sender:
+                        message.sender
+                          ._id,
+                    },
+                  }
+                  : conversation,
+            )
+            .sort(
+              (a, b) =>
+                new Date(
+                  b.latestMessage
+                    ?.createdAt || 0,
+                ).getTime() -
+                new Date(
+                  a.latestMessage
+                    ?.createdAt || 0,
+                ).getTime(),
+            ),
+      );
+    };
+
+    socket.on(
+      "newMessage",
+      handleNewMessage,
+    );
+
+    return () => {
+      socket.off(
+        "newMessage",
+        handleNewMessage,
+      );
+    };
+  }, [activeId]);
+
+  /* =====================================================
+     REAL-TIME MESSAGE DELETION
+  ===================================================== */
+
+  useEffect(() => {
+    const handleMessageDeleted = ({
+      messageId,
+      conversationId,
+    }: {
+      messageId: string;
+      conversationId: string;
+    }) => {
+      if (
+        conversationId !== activeId
+      ) {
+        return;
+      }
+
+      setBackendMessages(
+        (previous) =>
+          previous.filter(
+            (message) =>
+              message._id !==
+              messageId,
           ),
       );
     };
 
-    console.log("REGISTERING NEW MESSAGE LISTENER");
-
-    socket.on("newMessage", handleNewMessage);
+    socket.on(
+      "messageDeleted",
+      handleMessageDeleted,
+    );
 
     return () => {
-      console.log("REMOVING NEW MESSAGE LISTENER");
-      socket.off("newMessage", handleNewMessage);
+      socket.off(
+        "messageDeleted",
+        handleMessageDeleted,
+      );
     };
   }, [activeId]);
-  // --------------------------------------------------
-  // Search users
-  // --------------------------------------------------
 
+  /* =====================================================
+   AUTO-SCROLL TO LATEST MESSAGE
+===================================================== */
+
+  useEffect(() => {
+    const container =
+      messagesContainerRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    container.scrollTop =
+      container.scrollHeight;
+  }, [backendMessages]);
+  /* =====================================================
+     SEARCH USERS
+  ===================================================== */
 
   useEffect(() => {
     const searchUsers = async () => {
@@ -287,69 +597,384 @@ function MessagesPage() {
         return;
       }
 
-      const token = localStorage.getItem("token");
+      const token =
+        localStorage.getItem(
+          "token",
+        );
 
-      if (!token) return;
+      if (!token) {
+        return;
+      }
 
       try {
-        const response = await fetch(
-          `http://localhost:5000/api/users/search?q=${encodeURIComponent(
-            userSearch,
-          )}`,
+        const response =
+          await fetch(
+            `http://localhost:5000/api/users/search?q=${encodeURIComponent(
+              userSearch,
+            )}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "Failed to search users",
+          );
+        }
+
+        const data =
+          await response.json();
+
+        setSearchResults(
+          data.users,
+        );
+      } catch (error) {
+        console.error(
+          "Failed to search users:",
+          error,
+        );
+
+        setSearchResults([]);
+      }
+    };
+
+    void searchUsers();
+  }, [userSearch]);
+
+  /* =====================================================
+     ACTIVE CONVERSATION
+  ===================================================== */
+
+  const activeConversation =
+    backendConversations.find(
+      (conversation) =>
+        conversation.id ===
+        activeId,
+    );
+
+  const activeName =
+    activeConversation
+      ?.otherUser?.name ||
+    "Select a conversation";
+
+  const activeInitials =
+    activeConversation?.otherUser?.name
+      ?.slice(0, 2)
+      .toUpperCase() || "VC";
+
+  /* =====================================================
+     MESSAGE SEARCH
+  ===================================================== */
+
+  const filteredMessages =
+    backendMessages.filter(
+      (message) =>
+        message.text
+          .toLowerCase()
+          .includes(
+            messageSearch
+              .trim()
+              .toLowerCase(),
+          ),
+    );
+
+  /* =====================================================
+     CONVERSATION FILTER
+  ===================================================== */
+
+  const list =
+    backendConversations.filter(
+      (conversation) => {
+        const name =
+          conversation.otherUser
+            ?.name || "";
+
+        const matchesSearch =
+          name
+            .toLowerCase()
+            .includes(
+              query.toLowerCase(),
+            );
+
+        if (!matchesSearch) {
+          return false;
+        }
+
+        if (tab === "unread") {
+          return (
+            conversation.unreadCount >
+            0
+          );
+        }
+
+        if (tab === "pinned") {
+          return conversation.pinned;
+        }
+
+        return true;
+      },
+    );
+
+  /* =====================================================
+     START NEW CONVERSATION
+  ===================================================== */
+
+  const startConversation =
+    async (
+      user: SearchUser,
+    ) => {
+      const token =
+        localStorage.getItem(
+          "token",
+        );
+
+      if (!token) {
+        toast.error(
+          "Authentication required",
+        );
+        return;
+      }
+
+      try {
+        const response =
+          await fetch(
+            "http://localhost:5000/api/conversations",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                userId: user._id,
+              }),
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            "Failed to create conversation",
+          );
+        }
+
+        const newConversationId =
+          data.conversation.id;
+
+        const conversationResponse =
+          await fetch(
+            "http://localhost:5000/api/conversations",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+        if (
+          !conversationResponse.ok
+        ) {
+          throw new Error(
+            "Failed to reload conversations",
+          );
+        }
+
+        const conversationData =
+          await conversationResponse.json();
+
+        setBackendConversations(
+          conversationData.conversations,
+        );
+
+        setActiveId(
+          newConversationId,
+        );
+
+        setShowNewConversation(
+          false,
+        );
+
+        setUserSearch("");
+        setSearchResults([]);
+        setMobileOpen(true);
+      } catch (error) {
+        console.error(
+          "Failed to start conversation:",
+          error,
+        );
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to start conversation",
+        );
+      }
+    };
+
+  /* =====================================================
+     TOGGLE PIN
+  ===================================================== */
+
+  const togglePin = async (
+    conversationId: string,
+  ) => {
+    const token =
+      localStorage.getItem(
+        "token",
+      );
+
+    if (!token) {
+      toast.error(
+        "Authentication required",
+      );
+      return;
+    }
+
+    try {
+      const response =
+        await fetch(
+          `http://localhost:5000/api/conversations/${conversationId}/pin`,
           {
+            method: "PATCH",
             headers: {
               Authorization: `Bearer ${token}`,
             },
           },
         );
 
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+          "Failed to update pin",
+        );
+      }
+
+      setBackendConversations(
+        (previous) =>
+          previous.map(
+            (conversation) =>
+              conversation.id ===
+                conversationId
+                ? {
+                  ...conversation,
+                  pinned: data.pinned,
+                }
+                : conversation,
+          ),
+      );
+
+      toast.success(
+        data.pinned
+          ? "Conversation pinned"
+          : "Conversation unpinned",
+      );
+    } catch (error) {
+      console.error(
+        "Failed to toggle pin:",
+        error,
+      );
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update pin",
+      );
+    }
+  };
+
+  /* =====================================================
+     DELETE CONVERSATION
+  ===================================================== */
+
+  const deleteConversation =
+    async (
+      conversationId: string,
+    ) => {
+      const token =
+        localStorage.getItem(
+          "token",
+        );
+
+      if (!token) {
+        toast.error(
+          "Authentication required",
+        );
+        return;
+      }
+
+      try {
+        const response =
+          await fetch(
+            `http://localhost:5000/api/conversations/${conversationId}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+        const data =
+          await response.json();
+
         if (!response.ok) {
-          throw new Error("Failed to search users");
+          throw new Error(
+            data.message ||
+            "Failed to delete conversation",
+          );
         }
 
-        const data = await response.json();
+        setBackendConversations(
+          (previous) =>
+            previous.filter(
+              (conversation) =>
+                conversation.id !==
+                conversationId,
+            ),
+        );
 
-        setSearchResults(data.users);
+        if (
+          activeId ===
+          conversationId
+        ) {
+          setActiveId(null);
+          setBackendMessages([]);
+          setMobileOpen(false);
+        }
+
+        toast.success(
+          "Conversation deleted",
+        );
       } catch (error) {
-        console.error("Failed to search users:", error);
-        setSearchResults([]);
+        console.error(
+          "Failed to delete conversation:",
+          error,
+        );
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to delete conversation",
+        );
       }
     };
 
-    searchUsers();
-  }, [userSearch]);
+  /* =====================================================
+     DELETE MESSAGE
+  ===================================================== */
 
-  // --------------------------------------------------
-  // Active conversation
-  // --------------------------------------------------
-
-  const activeConversation = backendConversations.find(
-    (conversation) => conversation.id === activeId,
-  );
-
-  const activeName =
-    activeConversation?.otherUser?.name || "Select a conversation";
-
-  const activeInitials =
-    activeConversation?.otherUser?.name?.slice(0, 2).toUpperCase() || "VC";
-
-  // --------------------------------------------------
-  // Conversation list filtering
-  // --------------------------------------------------
-
-  const list = backendConversations.filter((conversation) => {
-    const name = conversation.otherUser?.name || "";
-
-    return name.toLowerCase().includes(query.toLowerCase());
-  });
-
-  // --------------------------------------------------
-  // Start new conversation
-  // --------------------------------------------------
-
-  const startConversation = async (user: SearchUser) => {
+  const deleteMessage = async (messageId: string) => {
     const token = localStorage.getItem("token");
-
     if (!token) {
       toast.error("Authentication required");
       return;
@@ -357,16 +982,13 @@ function MessagesPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/conversations",
+        `http://localhost:5000/api/messages/${messageId}`,
         {
-          method: "POST",
+          method: "DELETE",
           headers: {
-            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            userId: user._id,
-          }),
         },
       );
 
@@ -374,71 +996,47 @@ function MessagesPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to create conversation",
+          data.message || "Failed to delete message",
         );
       }
 
-      const newConversationId = data.conversation.id;
-
-      // Reload conversations
-      const conversationResponse = await fetch(
-        "http://localhost:5000/api/conversations",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+      setBackendMessages((previous) =>
+        previous.filter(
+          (message) => message._id !== messageId,
+        ),
       );
 
-      if (!conversationResponse.ok) {
-        throw new Error("Failed to reload conversations");
-      }
-
-      const conversationData = await conversationResponse.json();
-
-      setBackendConversations(conversationData.conversations);
-
-      // Select new/existing conversation
-      setActiveId(newConversationId);
-
-      // Close popup
-      setShowNewConversation(false);
-      setUserSearch("");
-      setSearchResults([]);
-
-      // Open conversation on mobile
-      setMobileOpen(true);
+      toast.success("Message deleted");
     } catch (error) {
-      console.error("Failed to start conversation:", error);
+      console.error("Failed to delete message:", error);
 
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to start conversation",
+          : "Failed to delete message",
       );
     }
   };
 
-  // --------------------------------------------------
-  // Render
-  // --------------------------------------------------
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
     <AppShell flush>
       <div className="flex h-full min-h-0">
-        {/* ==========================================
+        {/* =================================================
             CONVERSATION LIST
-        ========================================== */}
+        ================================================= */}
 
         <div
           className={cn(
             "border-border flex min-h-0 w-full flex-col border-r md:w-[320px] md:shrink-0",
-            mobileOpen && "hidden md:flex",
+            mobileOpen &&
+            "hidden md:flex",
           )}
         >
           <div className="space-y-3 p-3">
-            {/* Search + New Conversation */}
-
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search
@@ -448,7 +1046,11 @@ function MessagesPage() {
 
                 <Input
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(event) =>
+                    setQuery(
+                      event.target.value,
+                    )
+                  }
                   placeholder="Search conversations"
                   aria-label="Search conversations"
                   className="pl-9"
@@ -458,35 +1060,45 @@ function MessagesPage() {
               <button
                 type="button"
                 aria-label="New conversation"
-                onClick={() => {
-                  setShowNewConversation(true);
-                }}
+                onClick={() =>
+                  setShowNewConversation(
+                    true,
+                  )
+                }
                 className="bg-primary text-primary-foreground hover:bg-primary/90 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
               >
                 <Plus className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Tabs */}
-
-            <Tabs value={tab} onValueChange={setTab}>
+            <Tabs
+              value={tab}
+              onValueChange={setTab}
+            >
               <TabsList className="w-full">
-                <TabsTrigger value="all" className="flex-1">
+                <TabsTrigger
+                  value="all"
+                  className="flex-1"
+                >
                   All
                 </TabsTrigger>
 
-                <TabsTrigger value="unread" className="flex-1">
+                <TabsTrigger
+                  value="unread"
+                  className="flex-1"
+                >
                   Unread
                 </TabsTrigger>
 
-                <TabsTrigger value="pinned" className="flex-1">
+                <TabsTrigger
+                  value="pinned"
+                  className="flex-1"
+                >
                   Pinned
                 </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
-
-          {/* Conversation items */}
 
           <div className="scrollbar-slim min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-24 lg:pb-3">
             {list.length === 0 ? (
@@ -494,64 +1106,173 @@ function MessagesPage() {
                 No conversations
               </p>
             ) : (
-              list.map((conversation) => {
-                const name =
-                  conversation.otherUser?.name || "Unknown user";
+              list.map(
+                (conversation) => {
+                  const name =
+                    conversation
+                      .otherUser
+                      ?.name ||
+                    "Unknown user";
 
-                const initials = name.slice(0, 2).toUpperCase();
+                  const initials =
+                    name
+                      .slice(0, 2)
+                      .toUpperCase();
 
-                return (
-                  <button
-                    key={conversation.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveId(conversation.id);
-                      setMobileOpen(true);
-                    }}
-                    className={cn(
-                      "hover:bg-muted/50 flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors",
-                      conversation.id === activeId && "bg-muted",
-                    )}
-                  >
-                    <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                      {initials}
+                  return (
+                    <div
+                      key={
+                        conversation.id
+                      }
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        setActiveId(
+                          conversation.id,
+                        );
+                        setMobileOpen(
+                          true,
+                        );
+                      }}
+                      onKeyDown={(
+                        event,
+                      ) => {
+                        if (
+                          event.key ===
+                          "Enter" ||
+                          event.key ===
+                          " "
+                        ) {
+                          setActiveId(
+                            conversation.id,
+                          );
+                          setMobileOpen(
+                            true,
+                          );
+                        }
+                      }}
+                      className={cn(
+                        "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left transition-colors",
+                        conversation.id ===
+                        activeId &&
+                        "bg-muted",
+                      )}
+                    >
+                      <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                        {initials}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p
+                            className={cn(
+                              "truncate text-sm",
+                              conversation.unreadCount >
+                                0
+                                ? "font-semibold"
+                                : "font-medium",
+                            )}
+                          >
+                            {name}
+                          </p>
+
+                          {conversation.unreadCount >
+                            0 ? (
+                            <span className="bg-primary text-primary-foreground flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold">
+                              {conversation.unreadCount >
+                                99
+                                ? "99+"
+                                : conversation.unreadCount}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <p className="text-muted-foreground truncate text-xs">
+                          {conversation
+                            .latestMessage
+                            ?.text ||
+                            "Private conversation"}
+                        </p>
+                      </div>
+
+                      <div
+                        className="shrink-0"
+                        onClick={(event) =>
+                          event.stopPropagation()
+                        }
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            asChild
+                          >
+                            <button
+                              type="button"
+                              aria-label="Conversation options"
+                              className="hover:bg-muted flex h-8 w-8 items-center justify-center rounded-full"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-32"
+                          >
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                togglePin(
+                                  conversation.id,
+                                )
+                              }
+                            >
+                              {conversation.pinned
+                                ? "Unpin"
+                                : "Pin"}
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onSelect={() =>
+                                deleteConversation(
+                                  conversation.id,
+                                )
+                              }
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {name}
-                      </p>
-
-                      <p className="text-muted-foreground truncate text-xs">
-                        {conversation.latestMessage?.text || "Private conversation"}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })
+                  );
+                },
+              )
             )}
           </div>
         </div>
 
-        {/* ==========================================
+        {/* =================================================
             CONVERSATION WINDOW
-        ========================================== */}
+        ================================================= */}
 
         <section
           className={cn(
             "flex min-h-0 min-w-0 flex-1 flex-col",
-            !mobileOpen && "hidden md:flex",
+            !mobileOpen &&
+            "hidden md:flex",
           )}
         >
-          {/* Header */}
-
           <header className="border-border bg-background/70 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-3 py-2.5 backdrop-blur-xl sm:px-4">
             <div className="flex min-w-0 items-center gap-2">
               <IconButton
                 icon={ArrowLeft}
                 label="Back to conversations"
                 className="md:hidden"
-                onClick={() => setMobileOpen(false)}
+                onClick={() =>
+                  setMobileOpen(
+                    false,
+                  )
+                }
               />
 
               <div className="min-w-0">
@@ -570,6 +1291,20 @@ function MessagesPage() {
                 icon={Search}
                 label="Search in conversation"
                 className="hidden sm:inline-flex"
+                onClick={() => {
+                  setShowMessageSearch(
+                    (previous) =>
+                      !previous,
+                  );
+
+                  if (
+                    showMessageSearch
+                  ) {
+                    setMessageSearch(
+                      "",
+                    );
+                  }
+                }}
               />
 
               <IconButton
@@ -583,112 +1318,187 @@ function MessagesPage() {
               />
 
               <IconButton
-                icon={MoreHorizontal}
+                icon={MoreVertical}
                 label="More options"
               />
             </div>
           </header>
 
-          {/* Messages */}
+          <div className="min-h-0 flex-1 flex flex-col">
+            {showMessageSearch ? (
+              <div className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-2 sm:px-6">
+                <Search className="text-muted-foreground h-4 w-4 shrink-0" />
 
-          <div className="scrollbar-slim min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-5 sm:px-6">
-            <div className="flex justify-center">
-              <PrivacyBadge
-                label="Messages are visible only to authorized participants"
-                tone="muted"
-              />
-            </div>
-
-            {backendMessages.map((message) => {
-              const currentUser = JSON.parse(
-                localStorage.getItem("user") || "{}",
-              );
-
-              const currentUserId =
-                currentUser.id || currentUser._id;
-
-              const isSelf = message.sender._id === currentUserId;
-
-              return (
-                <MessageBubble
-                  key={message._id}
-                  message={{
-                    id: message._id,
-                    author: isSelf ? "You" : activeName,
-                    body: message.text,
-                    time: new Date(
-                      message.createdAt,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }),
-                    initials: isSelf
-                      ? currentUser.name
-                        ?.slice(0, 2)
-                        .toUpperCase() || "ME"
-                      : activeInitials,
-                    self: isSelf,
-                  }}
+                <Input
+                  value={messageSearch}
+                  onChange={(event) =>
+                    setMessageSearch(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Search messages..."
+                  autoFocus
+                  className="h-9"
                 />
-              );
-            })}
-          </div>
 
-          {/* Composer */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessageSearch(
+                      "",
+                    );
+                    setShowMessageSearch(
+                      false,
+                    );
+                  }}
+                  className="text-muted-foreground hover:text-foreground px-2 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+            <div
+              ref={messagesContainerRef}
+              className="scrollbar-slim min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-5 sm:px-6"
+            >
+              <div className="flex justify-center">
+                <PrivacyBadge
+                  label="Messages are visible only to authorized participants"
+                  tone="muted"
+                />
+              </div>
+
+              {filteredMessages.map(
+                (message) => {
+                  const currentUser =
+                    JSON.parse(
+                      localStorage.getItem(
+                        "user",
+                      ) || "{}",
+                    );
+
+                  const currentUserId =
+                    currentUser.id ||
+                    currentUser._id;
+
+                  const isSelf =
+                    message.sender
+                      ._id ===
+                    currentUserId;
+
+                  return (
+                    <MessageBubble
+                      key={message._id}
+                      message={{
+                        id: message._id,
+                        author: isSelf ? "You" : activeName,
+                        body: message.text,
+                        time: new Date(message.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }),
+                        initials: isSelf
+                          ? currentUser.name?.slice(0, 2).toUpperCase() || "ME"
+                          : activeInitials,
+                        self: isSelf,
+                      }}
+                      {...(isSelf
+                        ? {
+                          onDelete: () => {
+                            deleteMessage(message._id);
+                          },
+                        }
+                        : {})}
+                    />);
+                },
+              )}
+            </div>
+          </div>
 
           <div className="pb-16 lg:pb-0">
             <MessageComposer
               placeholder={`Message ${activeName}…`}
-              conversationId={activeId || ""}
-              onMessageSent={(message) => {
-                setBackendMessages((previous) => {
-                  const updatedMessages = [...previous, message];
+              conversationId={
+                activeId || ""
+              }
+              onMessageSent={(
+                message,
+              ) => {
+                setBackendMessages(
+                  (previous) => {
+                    const updatedMessages =
+                      [
+                        ...previous,
+                        message,
+                      ];
 
-                  return updatedMessages.filter(
-                    (item, index, array) =>
-                      array.findIndex(
-                        (existing) => existing._id === item._id,
-                      ) === index,
-                  );
-                });
-                setBackendConversations((previous) =>
-                  previous
-                    .map((conversation) =>
-                      conversation.id === activeId
-                        ? {
-                          ...conversation,
-                          latestMessage: {
-                            text: message.text,
-                            createdAt: message.createdAt,
-                            sender: message.sender._id,
-                          },
-                        }
-                        : conversation,
-                    )
-                    .sort(
-                      (a, b) =>
-                        new Date(
-                          b.latestMessage?.createdAt || 0,
-                        ).getTime() -
-                        new Date(
-                          a.latestMessage?.createdAt || 0,
-                        ).getTime(),
-                    ),
+                    return updatedMessages.filter(
+                      (
+                        item,
+                        index,
+                        array,
+                      ) =>
+                        array.findIndex(
+                          (existing) =>
+                            existing._id ===
+                            item._id,
+                        ) === index,
+                    );
+                  },
+                );
+
+                setBackendConversations(
+                  (previous) =>
+                    previous
+                      .map(
+                        (
+                          conversation,
+                        ) =>
+                          conversation.id ===
+                            activeId
+                            ? {
+                              ...conversation,
+                              latestMessage:
+                              {
+                                text: message.text,
+                                createdAt:
+                                  message.createdAt,
+                                sender:
+                                  message
+                                    .sender
+                                    ._id,
+                              },
+                            }
+                            : conversation,
+                      )
+                      .sort(
+                        (a, b) =>
+                          new Date(
+                            b
+                              .latestMessage
+                              ?.createdAt ||
+                            0,
+                          ).getTime() -
+                          new Date(
+                            a
+                              .latestMessage
+                              ?.createdAt ||
+                            0,
+                          ).getTime(),
+                      ),
                 );
               }}
             />
           </div>
         </section>
 
-        {/* ==========================================
+        {/* =================================================
             NEW CONVERSATION POPUP
-        ========================================== */}
+        ================================================= */}
 
-        {showNewConversation && (
+        {showNewConversation ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
             <div className="bg-background border-border w-full max-w-md rounded-2xl border p-5 shadow-xl">
-              {/* Popup header */}
-
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold">
@@ -696,16 +1506,21 @@ function MessagesPage() {
                   </h2>
 
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Search for a user to start a conversation.
+                    Search for a user to
+                    start a conversation.
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setShowNewConversation(false);
+                    setShowNewConversation(
+                      false,
+                    );
                     setUserSearch("");
-                    setSearchResults([]);
+                    setSearchResults(
+                      [],
+                    );
                   }}
                   className="text-muted-foreground hover:text-foreground text-xl"
                   aria-label="Close"
@@ -714,50 +1529,65 @@ function MessagesPage() {
                 </button>
               </div>
 
-              {/* User search */}
-
               <Input
                 value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
+                onChange={(event) =>
+                  setUserSearch(
+                    event.target.value,
+                  )
+                }
                 placeholder="Search by name or email..."
                 autoFocus
               />
 
-              {/* Search results */}
-
               <div className="mt-4 space-y-2">
-                {searchResults.map((user) => (
-                  <button
-                    key={user._id}
-                    type="button"
-                    onClick={() => startConversation(user)}
-                    className="hover:bg-muted flex w-full items-center gap-3 rounded-xl p-3 text-left"
-                  >
-                    <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
-                      {user.name.slice(0, 2).toUpperCase()}
-                    </div>
+                {searchResults.map(
+                  (user) => (
+                    <button
+                      key={
+                        user._id
+                      }
+                      type="button"
+                      onClick={() =>
+                        void startConversation(
+                          user,
+                        )
+                      }
+                      className="hover:bg-muted flex w-full items-center gap-3 rounded-xl p-3 text-left"
+                    >
+                      <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                        {user.name
+                          .slice(
+                            0,
+                            2,
+                          )
+                          .toUpperCase()}
+                      </div>
 
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {user.name}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {user.name}
+                        </p>
 
-                      <p className="text-muted-foreground truncate text-xs">
-                        {user.email}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                        <p className="text-muted-foreground truncate text-xs">
+                          {user.email}
+                        </p>
+                      </div>
+                    </button>
+                  ),
+                )}
 
-                {userSearch && searchResults.length === 0 && (
+                {userSearch &&
+                  searchResults.length ===
+                  0 ? (
                   <p className="text-muted-foreground py-4 text-center text-sm">
                     No users found.
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </AppShell>
   );

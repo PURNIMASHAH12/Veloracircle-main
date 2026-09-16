@@ -4,8 +4,9 @@ export interface IMessage extends Document {
   conversation: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
   text: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
-
 const messageSchema = new Schema<IMessage>(
   {
     conversation: {

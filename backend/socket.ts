@@ -14,6 +14,16 @@ export const initializeSocket = (httpServer: HttpServer) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
+    // Join personal user room
+    socket.on("joinUser", (userId: string) => {
+      socket.join(`user:${userId}`);
+
+      console.log(
+        `Socket ${socket.id} joined user room ${userId}`,
+      );
+    });
+
+    // Join conversation room
     socket.on("joinConversation", (conversationId: string) => {
       socket.join(`conversation:${conversationId}`);
 

@@ -1,12 +1,29 @@
-        import express from "express";
-        import { protect } from "../middleware/Auth";
-        import {
-        createOrGetConversation,
-        getMyConversations,
-        } from "../controllers/ConversationController";
+import express from "express";
+import { protect } from "../middleware/Auth";
 
-        const router = express.Router();
+import {
+  createOrGetConversation,
+  getMyConversations,
+   deleteConversation,
+  markConversationAsRead,
+  togglePinConversation,
+} from "../controllers/ConversationController";
 
-        router.post("/", protect, createOrGetConversation);
-    router.get("/", protect, getMyConversations);   
-        export default router;
+const router = express.Router();
+
+router.post("/", protect, createOrGetConversation);
+
+router.get("/", protect, getMyConversations);
+
+router.patch(
+  "/:conversationId/read",
+  protect,
+  markConversationAsRead
+);
+router.patch(
+  "/:conversationId/pin",
+  protect,
+  togglePinConversation,
+);
+router.delete("/:conversationId", protect, deleteConversation);
+export default router;

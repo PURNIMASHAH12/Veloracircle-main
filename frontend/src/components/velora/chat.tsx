@@ -1,6 +1,7 @@
 import {
-  CornerUpLeft,
+  Bookmark,
   Copy,
+  CornerUpLeft,
   FileText,
   Forward,
   Mic,
@@ -10,7 +11,6 @@ import {
   Plus,
   Send,
   Smile,
-  Bookmark,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -22,9 +22,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, IconButton } from "@/components/velora/primitives";
-import type { Conversation, Message } from "@/lib/mock-data";
+
+import {
+  Avatar,
+  IconButton,
+} from "@/components/velora/primitives";
+
+import type { Conversation } from "@/lib/mock-data";
+
 import { cn } from "@/lib/utils";
+
+/* =====================================================
+   CONVERSATION ITEM
+===================================================== */
 
 export function ConversationItem({
   conversation,
@@ -39,19 +49,39 @@ export function ConversationItem({
     <button
       type="button"
       onClick={onSelect}
-      aria-current={active ? "true" : undefined}
+      aria-current={
+        active ? "true" : undefined
+      }
       className={cn(
         "focus-visible:ring-ring grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-all duration-200 outline-none focus-visible:ring-2",
-        active ? "border-border bg-surface-2/80" : "hover:bg-accent/50",
+        active
+          ? "border-border bg-surface-2/80"
+          : "hover:bg-accent/50",
       )}
     >
-      <Avatar initials={conversation.initials} size="md" tone={active ? "brand" : "default"} />
+      <Avatar
+        initials={conversation.initials}
+        size="md"
+        tone={
+          active ? "brand" : "default"
+        }
+      />
+
       <span className="min-w-0">
-        <span className="block truncate text-[13px] font-medium">{conversation.name}</span>
-        <span className="text-muted-foreground block truncate text-xs">{conversation.preview}</span>
+        <span className="block truncate text-[13px] font-medium">
+          {conversation.name}
+        </span>
+
+        <span className="text-muted-foreground block truncate text-xs">
+          {conversation.preview}
+        </span>
       </span>
+
       <span className="flex shrink-0 flex-col items-end gap-1.5">
-        <span className="text-muted-foreground text-[11px]">{conversation.time}</span>
+        <span className="text-muted-foreground text-[11px]">
+          {conversation.time}
+        </span>
+
         {conversation.unread ? (
           <span className="bg-primary text-primary-foreground min-w-5 rounded-full px-1.5 text-center text-[10px] leading-[18px] font-semibold">
             {conversation.unread}
@@ -62,8 +92,22 @@ export function ConversationItem({
   );
 }
 
-function MessageActions() {
-  const act = (label: string) => toast(label, { description: "Mock action" });
+/* =====================================================
+   MESSAGE ACTIONS
+   Delete is ONLY available inside three-dot menu.
+===================================================== */
+
+function MessageActions({
+  onDelete,
+}: {
+  onDelete?: () => void;
+}) {
+  const act = (label: string) => {
+    toast(label, {
+      description: "Mock action",
+    });
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -72,56 +116,157 @@ function MessageActions() {
           aria-label="Message actions"
           className="text-muted-foreground hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal
+            className="h-4 w-4"
+            aria-hidden
+          />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuItem onSelect={() => act("Reply")}>
-          <CornerUpLeft className="h-4 w-4" /> Reply
+
+      <DropdownMenuContent
+        align="end"
+        className="w-40"
+      >
+        <DropdownMenuItem
+          onSelect={() =>
+            act("Reply")
+          }
+        >
+          <CornerUpLeft className="h-4 w-4" />
+          Reply
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => act("Reaction added")}>
-          <Smile className="h-4 w-4" /> React
+
+        <DropdownMenuItem
+          onSelect={() =>
+            act("Reaction added")
+          }
+        >
+          <Smile className="h-4 w-4" />
+          React
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => act("Copied")}>
-          <Copy className="h-4 w-4" /> Copy
+
+        <DropdownMenuItem
+          onSelect={() =>
+            act("Copied")
+          }
+        >
+          <Copy className="h-4 w-4" />
+          Copy
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => act("Saved")}>
-          <Bookmark className="h-4 w-4" /> Save
+
+        <DropdownMenuItem
+          onSelect={() =>
+            act("Saved")
+          }
+        >
+          <Bookmark className="h-4 w-4" />
+          Save
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => act("Forwarded")}>
-          <Forward className="h-4 w-4" /> Forward
+
+        <DropdownMenuItem
+          onSelect={() =>
+            act("Forwarded")
+          }
+        >
+          <Forward className="h-4 w-4" />
+          Forward
         </DropdownMenuItem>
-        <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => act("Deleted")}>
-          <Trash2 className="h-4 w-4" /> Delete
-        </DropdownMenuItem>
+
+        {onDelete ? (
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={() =>
+              onDelete()
+            }
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-export function MessageBubble({ message }: { message: Message }) {
+/* =====================================================
+   MESSAGE BUBBLE
+===================================================== */
+
+export function MessageBubble({
+  message,
+  onDelete,
+}: {
+  message: {
+    id: string;
+    author: string;
+    body: string;
+    time: string;
+    initials: string;
+    self: boolean;
+    kind?: "text" | "file" | "voice";
+    file?: {
+      name: string;
+      size: string;
+    };
+    replyTo?: {
+      author: string;
+      body: string;
+    };
+    reactions?: {
+      emoji: string;
+      count: number;
+    }[];
+  };
+  onDelete?: () => void;
+}) {
   const self = message.self;
+
   return (
     <div
       className={cn(
         "animate-velora-in group flex w-full gap-3",
-        self ? "flex-row-reverse" : "flex-row",
+        self
+          ? "flex-row-reverse"
+          : "flex-row",
       )}
     >
-      <Avatar initials={message.initials} size="sm" tone={self ? "brand" : "default"} />
-      <div className={cn("flex min-w-0 max-w-[min(560px,82%)] flex-col", self && "items-end")}>
+      <Avatar
+        initials={message.initials}
+        size="sm"
+        tone={
+          self ? "brand" : "default"
+        }
+      />
+
+      <div
+        className={cn(
+          "flex min-w-0 max-w-[min(560px,82%)] flex-col",
+          self && "items-end",
+        )}
+      >
         <div className="text-muted-foreground mb-1 flex items-center gap-2 text-[11px]">
-          <span className="text-foreground/70 font-medium">{self ? "You" : message.author}</span>
-          <span>{message.time}</span>
-          <MessageActions />
+          <span className="text-foreground/70 font-medium">
+            {self
+              ? "You"
+              : message.author}
+          </span>
+
+          <span>
+            {message.time}
+          </span>
+
+          {self ? <MessageActions {...(onDelete ? { onDelete } : {})} /> : <MessageActions />}
         </div>
 
-        {message.replyTo && (
+        {message.replyTo ? (
           <div className="border-primary/50 bg-surface-2/50 text-muted-foreground mb-1.5 max-w-full truncate rounded-lg border-l-2 px-3 py-1.5 text-[11px]">
-            <span className="text-foreground/70 font-medium">{message.replyTo.author}: </span>
+            <span className="text-foreground/70 font-medium">
+              {message.replyTo.author}:{" "}
+            </span>
+
             {message.replyTo.body}
           </div>
-        )}
+        ) : null}
 
         <div
           className={cn(
@@ -131,54 +276,94 @@ export function MessageBubble({ message }: { message: Message }) {
               : "border-border bg-surface rounded-tl-md",
           )}
         >
-          {message.kind === "file" && message.file && (
+          {message.kind ===
+            "file" &&
+          message.file ? (
             <div className="border-border bg-surface-2/70 mb-2 flex items-center gap-3 rounded-xl border p-2.5">
               <span className="bg-primary/10 text-primary grid h-9 w-9 shrink-0 place-items-center rounded-lg">
-                <FileText className="h-4 w-4" aria-hidden />
+                <FileText
+                  className="h-4 w-4"
+                  aria-hidden
+                />
               </span>
+
               <span className="min-w-0">
-                <span className="block truncate text-xs font-medium">{message.file.name}</span>
-                <span className="text-muted-foreground block text-[11px]">{message.file.size}</span>
+                <span className="block truncate text-xs font-medium">
+                  {message.file.name}
+                </span>
+
+                <span className="text-muted-foreground block text-[11px]">
+                  {message.file.size}
+                </span>
               </span>
             </div>
-          )}
-          {message.kind === "voice" ? (
+          ) : null}
+
+          {message.kind ===
+          "voice" ? (
             <div className="flex items-center gap-3">
               <span className="bg-primary/15 text-primary grid h-8 w-8 place-items-center rounded-full">
-                <Play className="h-3.5 w-3.5" aria-hidden />
+                <Play
+                  className="h-3.5 w-3.5"
+                  aria-hidden
+                />
               </span>
-              <span className="flex h-6 items-end gap-[3px]" aria-hidden>
-                {[6, 12, 18, 9, 22, 14, 8, 16, 11, 20, 7, 13, 17, 9].map((h, i) => (
-                  <span
-                    key={i}
-                    className="bg-primary/50 w-[3px] rounded-full"
-                    style={{ height: `${h}px` }}
-                  />
-                ))}
+
+              <span
+                className="flex h-6 items-end gap-[3px]"
+                aria-hidden
+              >
+                {[
+                  6, 12, 18, 9, 22,
+                  14, 8, 16, 11, 20,
+                  7, 13, 17, 9,
+                ].map(
+                  (height, index) => (
+                    <span
+                      key={index}
+                      className="bg-primary/50 w-[3px] rounded-full"
+                      style={{
+                        height: `${height}px`,
+                      }}
+                    />
+                  ),
+                )}
               </span>
-              <span className="text-muted-foreground text-[11px]">0:42</span>
+
+              <span className="text-muted-foreground text-[11px]">
+                0:42
+              </span>
             </div>
           ) : (
             message.body
           )}
         </div>
 
-        {message.reactions && (
+        {message.reactions ? (
           <div className="mt-1.5 flex gap-1.5">
-            {message.reactions.map((r) => (
-              <span
-                key={r.emoji}
-                className="border-border bg-surface-2/70 text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]"
-              >
-                {r.emoji} {r.count}
-              </span>
-            ))}
+            {message.reactions.map(
+              (reaction) => (
+                <span
+                  key={
+                    reaction.emoji
+                  }
+                  className="border-border bg-surface-2/70 text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]"
+                >
+                  {reaction.emoji}{" "}
+                  {reaction.count}
+                </span>
+              ),
+            )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
 }
+
+/* =====================================================
+   MESSAGE COMPOSER
+===================================================== */
 
 export function MessageComposer({
   placeholder = "Message…",
@@ -187,87 +372,159 @@ export function MessageComposer({
 }: {
   placeholder?: string;
   conversationId: string;
-  onMessageSent: (message: any) => void;
+  onMessageSent: (
+    message: any,
+  ) => void;
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] =
+    useState("");
 
   const send = async () => {
     const text = value.trim();
 
-    if (!text) return;
+    if (!text) {
+      return;
+    }
 
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem(
+        "token",
+      );
 
     if (!token) {
-      toast.error("Please log in again");
+      toast.error(
+        "Please log in again",
+      );
+      return;
+    }
+
+    if (!conversationId) {
+      toast.error(
+        "Please select a conversation",
+      );
       return;
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          conversationId,
-          text,
-        }),
-      });
+      const response =
+        await fetch(
+          "http://localhost:5000/api/messages",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              conversationId,
+              text,
+            }),
+          },
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
-        toast.error(data.message || "Failed to send message");
+        toast.error(
+          data.message ||
+            "Failed to send message",
+        );
         return;
       }
 
-      toast.success("Message sent");
       setValue("");
+
       onMessageSent(data.data);
+
+      toast.success(
+        "Message sent",
+      );
     } catch (error) {
-      console.error("Send message error:", error);
-      toast.error("Unable to send message");
+      console.error(
+        "Send message error:",
+        error,
+      );
+
+      toast.error(
+        "Unable to send message",
+      );
     }
   };
 
   return (
     <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        send();
+      onSubmit={(event) => {
+        event.preventDefault();
+        void send();
       }}
       className="border-border bg-surface/80 safe-bottom border-t p-3 backdrop-blur-xl sm:p-4"
     >
       <div className="border-border bg-surface-2/60 focus-within:border-primary/40 flex items-end gap-1.5 rounded-2xl border p-1.5 transition-colors">
-        <IconButton icon={Plus} label="More options" className="h-9 w-9" />
-        <IconButton icon={Paperclip} label="Attach file" className="hidden h-9 w-9 sm:inline-flex" />
-        <label className="sr-only" htmlFor="composer">
+        <IconButton
+          icon={Plus}
+          label="More options"
+          className="h-9 w-9"
+        />
+
+        <IconButton
+          icon={Paperclip}
+          label="Attach file"
+          className="hidden h-9 w-9 sm:inline-flex"
+        />
+
+        <label
+          className="sr-only"
+          htmlFor="composer"
+        >
           Write a message
         </label>
+
         <textarea
           id="composer"
           rows={1}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send();
+          onChange={(event) =>
+            setValue(
+              event.target.value,
+            )
+          }
+          onKeyDown={(event) => {
+            if (
+              event.key ===
+                "Enter" &&
+              !event.shiftKey
+            ) {
+              event.preventDefault();
+              void send();
             }
           }}
           placeholder={placeholder}
           className="placeholder:text-muted-foreground max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none"
         />
-        <IconButton icon={Smile} label="Emoji" className="hidden h-9 w-9 sm:inline-flex" />
-        <IconButton icon={Mic} label="Record voice message" className="h-9 w-9" />
+
+        <IconButton
+          icon={Smile}
+          label="Emoji"
+          className="hidden h-9 w-9 sm:inline-flex"
+        />
+
+        <IconButton
+          icon={Mic}
+          label="Record voice message"
+          className="h-9 w-9"
+        />
+
         <button
           type="submit"
           aria-label="Send message"
           className="bg-primary text-primary-foreground focus-visible:ring-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 outline-none hover:brightness-110 active:scale-95 focus-visible:ring-2"
         >
-          <Send className="h-4 w-4" aria-hidden />
+          <Send
+            className="h-4 w-4"
+            aria-hidden
+          />
         </button>
       </div>
     </form>

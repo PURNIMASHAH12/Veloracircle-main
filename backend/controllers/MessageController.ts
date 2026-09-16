@@ -17,7 +17,10 @@ export const sendMessage = async (
       return;
     }
 
-    const { conversationId, text } = req.body;
+    const { conversationId, text } = req.body as {
+      conversationId: string;
+      text: string;
+    };
 
     if (!conversationId || !text) {
       res.status(400).json({
@@ -60,7 +63,23 @@ export const sendMessage = async (
       sender: userId,
       text: text.trim(),
     });
+    const otherParticipant = conversation.participants.find(
+      (participant) => participant.toString() !== userId.toString()
+    );
 
+    if (otherParticipant) {
+      const otherUserId = otherParticipant.toString();
+
+      const currentUnread =
+        conversation.unreadCounts?.get(otherUserId) || 0;
+
+      conversation.unreadCounts?.set(
+        otherUserId,
+        currentUnread + 1
+      );
+
+      await conversation.save();
+    }
     await Conversation.findByIdAndUpdate(conversationId, {
       updatedAt: new Date(),
     });
@@ -68,9 +87,17 @@ export const sendMessage = async (
     const populatedMessage = await Message.findById(message._id)
       .populate("sender", "name email")
       .populate("conversation");
+    // Send to the conversation room
     getIO()
       .to(`conversation:${conversationId}`)
       .emit("newMessage", populatedMessage);
+
+    // Send to the other participant's personal room
+    if (otherParticipant) {
+      getIO()
+        .to(`user:${otherParticipant.toString()}`)
+        .emit("newMessage", populatedMessage);
+    }
     res.status(201).json({
       message: "Message sent successfully",
       data: populatedMessage,
@@ -99,7 +126,10 @@ export const getMessages = async (
 
     const { conversationId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+    if (
+      typeof conversationId !== "string" ||
+      !mongoose.isValidObjectId(conversationId)
+    ) {
       res.status(400).json({
         message: "Invalid conversation ID",
       });
@@ -146,4 +176,74 @@ export const getMessages = async (
     });
   }
 };
+// Delete a message
+export const deleteMessage = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    console.log("===== DELETE CONTROLLER =====");
+    console.log("req.user:", req.user);
+    console.log("messageId:", req.params.messageId);
+    if (!req.user) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+      return;
+    }
 
+    const { messageId } = req.params;
+
+    if (
+      typeof messageId !== "string" ||
+      !mongoose.isValidObjectId(messageId)
+    ) {
+      res.status(400).json({
+        message: "Invalid message ID",
+      });
+      return;
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
+
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      res.status(404).json({
+        message: "Message not found",
+      });
+      return;
+    }
+
+    // Only the sender can delete their own message
+    if (message.sender.toString() !== userId.toString()) {
+      res.status(403).json({
+        message: "You can only delete your own messages",
+      });
+      return;
+    }
+
+    const conversationId = message.conversation.toString();
+
+    await Message.findByIdAndDelete(messageId);
+
+    // Notify everyone in the conversation
+    getIO()
+      .to(`conversation:${conversationId}`)
+      .emit("messageDeleted", {
+        messageId,
+        conversationId,
+      });
+
+    res.status(200).json({
+      message: "Message deleted successfully",
+      messageId,
+    });
+  } catch (error) {
+    console.error("Delete message error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
