@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMessageReadStatus } from "@/hooks/useMessageReadStatus";
 import {
   ArrowLeft,
   MoreVertical,
@@ -89,6 +90,7 @@ type BackendMessage = {
   };
   text: string;
   createdAt: string;
+  readBy?: string[];
 };
 
 type BackendConversation = {
@@ -124,9 +126,9 @@ function MessagesPage() {
   const [
     backendConversations,
     setBackendConversations,
-  ] = useState<
-    BackendConversation[]
-  >([]);
+  ] = useState<BackendConversation[]>(
+    [],
+  );
 
   const [
     backendMessages,
@@ -137,6 +139,15 @@ function MessagesPage() {
 
   const [activeId, setActiveId] =
     useState<string | null>(null);
+
+  /* =====================================================
+     READ RECEIPT STATUS
+  ===================================================== */
+
+  useMessageReadStatus({
+    activeId,
+    setBackendMessages,
+  });
 
   const [tab, setTab] =
     useState("all");
@@ -178,6 +189,7 @@ function MessagesPage() {
     useRef<Set<string>>(
       new Set(),
     );
+
   const messagesContainerRef =
     useRef<HTMLDivElement | null>(null);
 
@@ -188,7 +200,7 @@ function MessagesPage() {
   useEffect(() => {
     const currentUser = JSON.parse(
       localStorage.getItem("user") ||
-      "{}",
+        "{}",
     );
 
     const currentUserId =
@@ -331,36 +343,48 @@ function MessagesPage() {
             data.data,
           );
 
-          const readResponse =
-            await fetch(
-              `http://localhost:5000/api/conversations/${activeId}/read`,
+          const currentUser = JSON.parse(
+            localStorage.getItem(
+              "user",
+            ) || "{}",
+          );
+
+          const currentUserId =
+            currentUser.id ||
+            currentUser._id;
+
+          if (currentUserId) {
+            console.log(
+              "📖 Marking messages as read:",
+              activeId,
+            );
+
+            socket.emit(
+              "markMessagesAsRead",
               {
-                method: "PATCH",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
+                conversationId:
+                  activeId,
+                userId:
+                  currentUserId,
               },
             );
 
-          if (!readResponse.ok) {
-            throw new Error(
-              "Failed to mark conversation as read",
+            setBackendConversations(
+              (previous) =>
+                previous.map(
+                  (
+                    conversation,
+                  ) =>
+                    conversation.id ===
+                    activeId
+                      ? {
+                          ...conversation,
+                          unreadCount: 0,
+                        }
+                      : conversation,
+                ),
             );
           }
-
-          setBackendConversations(
-            (previous) =>
-              previous.map(
-                (conversation) =>
-                  conversation.id ===
-                    activeId
-                    ? {
-                      ...conversation,
-                      unreadCount: 0,
-                    }
-                    : conversation,
-              ),
-          );
         } catch (error) {
           console.error(
             "Failed to load messages:",
@@ -481,37 +505,39 @@ function MessagesPage() {
             .map(
               (conversation) =>
                 conversation.id ===
-                  messageConversationId
+                messageConversationId
                   ? {
-                    ...conversation,
+                      ...conversation,
 
-                    unreadCount:
-                      isActiveConversation ||
+                      unreadCount:
+                        isActiveConversation ||
                         isOwnMessage
-                        ? 0
-                        : conversation.unreadCount +
-                        1,
+                          ? 0
+                          : conversation.unreadCount +
+                            1,
 
-                    latestMessage: {
-                      text: message.text,
-                      createdAt:
-                        message.createdAt,
-                      sender:
-                        message.sender
-                          ._id,
-                    },
-                  }
+                      latestMessage: {
+                        text: message.text,
+                        createdAt:
+                          message.createdAt,
+                        sender:
+                          message.sender
+                            ._id,
+                      },
+                    }
                   : conversation,
             )
             .sort(
               (a, b) =>
                 new Date(
                   b.latestMessage
-                    ?.createdAt || 0,
+                    ?.createdAt ||
+                    0,
                 ).getTime() -
                 new Date(
                   a.latestMessage
-                    ?.createdAt || 0,
+                    ?.createdAt ||
+                    0,
                 ).getTime(),
             ),
       );
@@ -572,8 +598,8 @@ function MessagesPage() {
   }, [activeId]);
 
   /* =====================================================
-   AUTO-SCROLL TO LATEST MESSAGE
-===================================================== */
+     AUTO-SCROLL TO LATEST MESSAGE
+  ===================================================== */
 
   useEffect(() => {
     const container =
@@ -586,6 +612,7 @@ function MessagesPage() {
     container.scrollTop =
       container.scrollHeight;
   }, [backendMessages]);
+
   /* =====================================================
      SEARCH USERS
   ===================================================== */
@@ -761,7 +788,7 @@ function MessagesPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-            "Failed to create conversation",
+              "Failed to create conversation",
           );
         }
 
@@ -855,7 +882,7 @@ function MessagesPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-          "Failed to update pin",
+            "Failed to update pin",
         );
       }
 
@@ -864,11 +891,11 @@ function MessagesPage() {
           previous.map(
             (conversation) =>
               conversation.id ===
-                conversationId
+              conversationId
                 ? {
-                  ...conversation,
-                  pinned: data.pinned,
-                }
+                    ...conversation,
+                    pinned: data.pinned,
+                  }
                 : conversation,
           ),
       );
@@ -930,7 +957,7 @@ function MessagesPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-            "Failed to delete conversation",
+              "Failed to delete conversation",
           );
         }
 
@@ -973,42 +1000,60 @@ function MessagesPage() {
      DELETE MESSAGE
   ===================================================== */
 
-  const deleteMessage = async (messageId: string) => {
-    const token = localStorage.getItem("token");
+  const deleteMessage = async (
+    messageId: string,
+  ) => {
+    const token =
+      localStorage.getItem("token");
+
     if (!token) {
-      toast.error("Authentication required");
+      toast.error(
+        "Authentication required",
+      );
       return;
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/messages/${messageId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+      const response =
+        await fetch(
+          `http://localhost:5000/api/messages/${messageId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type":
+                "application/json",
+            },
           },
-        },
-      );
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to delete message",
+          data.message ||
+            "Failed to delete message",
         );
       }
 
-      setBackendMessages((previous) =>
-        previous.filter(
-          (message) => message._id !== messageId,
-        ),
+      setBackendMessages(
+        (previous) =>
+          previous.filter(
+            (message) =>
+              message._id !==
+              messageId,
+          ),
       );
 
-      toast.success("Message deleted");
+      toast.success(
+        "Message deleted",
+      );
     } catch (error) {
-      console.error("Failed to delete message:", error);
+      console.error(
+        "Failed to delete message:",
+        error,
+      );
 
       toast.error(
         error instanceof Error
@@ -1033,7 +1078,7 @@ function MessagesPage() {
           className={cn(
             "border-border flex min-h-0 w-full flex-col border-r md:w-[320px] md:shrink-0",
             mobileOpen &&
-            "hidden md:flex",
+              "hidden md:flex",
           )}
         >
           <div className="space-y-3 p-3">
@@ -1139,9 +1184,9 @@ function MessagesPage() {
                       ) => {
                         if (
                           event.key ===
-                          "Enter" ||
+                            "Enter" ||
                           event.key ===
-                          " "
+                            " "
                         ) {
                           setActiveId(
                             conversation.id,
@@ -1154,8 +1199,8 @@ function MessagesPage() {
                       className={cn(
                         "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left transition-colors",
                         conversation.id ===
-                        activeId &&
-                        "bg-muted",
+                          activeId &&
+                          "bg-muted",
                       )}
                     >
                       <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
@@ -1177,10 +1222,10 @@ function MessagesPage() {
                           </p>
 
                           {conversation.unreadCount >
-                            0 ? (
+                          0 ? (
                             <span className="bg-primary text-primary-foreground flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold">
                               {conversation.unreadCount >
-                                99
+                              99
                                 ? "99+"
                                 : conversation.unreadCount}
                             </span>
@@ -1259,7 +1304,7 @@ function MessagesPage() {
           className={cn(
             "flex min-h-0 min-w-0 flex-1 flex-col",
             !mobileOpen &&
-            "hidden md:flex",
+              "hidden md:flex",
           )}
         >
           <header className="border-border bg-background/70 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-3 py-2.5 backdrop-blur-xl sm:px-4">
@@ -1357,8 +1402,11 @@ function MessagesPage() {
                 </button>
               </div>
             ) : null}
+
             <div
-              ref={messagesContainerRef}
+              ref={
+                messagesContainerRef
+              }
               className="scrollbar-slim min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-5 sm:px-6"
             >
               <div className="flex justify-center">
@@ -1386,30 +1434,58 @@ function MessagesPage() {
                       ._id ===
                     currentUserId;
 
+                  const isRead =
+                    isSelf &&
+                    Boolean(
+                      message.readBy?.some(
+                        (userId) =>
+                          userId !==
+                          currentUserId,
+                      ),
+                    );
+
                   return (
                     <MessageBubble
                       key={message._id}
                       message={{
                         id: message._id,
-                        author: isSelf ? "You" : activeName,
+                        author: isSelf
+                          ? "You"
+                          : activeName,
                         body: message.text,
-                        time: new Date(message.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }),
+                        time: new Date(
+                          message.createdAt,
+                        ).toLocaleTimeString(
+                          [],
+                          {
+                            hour: "2-digit",
+                            minute:
+                              "2-digit",
+                          },
+                        ),
                         initials: isSelf
-                          ? currentUser.name?.slice(0, 2).toUpperCase() || "ME"
+                          ? currentUser.name
+                              ?.slice(
+                                0,
+                                2,
+                              )
+                              .toUpperCase() ||
+                            "ME"
                           : activeInitials,
                         self: isSelf,
+                        isRead,
                       }}
                       {...(isSelf
                         ? {
-                          onDelete: () => {
-                            deleteMessage(message._id);
-                          },
-                        }
+                            onDelete: () => {
+                              deleteMessage(
+                                message._id,
+                              );
+                            },
+                          }
                         : {})}
-                    />);
+                    />
+                  );
                 },
               )}
             </div>
@@ -1457,18 +1533,18 @@ function MessagesPage() {
                           conversation.id ===
                             activeId
                             ? {
-                              ...conversation,
-                              latestMessage:
-                              {
-                                text: message.text,
-                                createdAt:
-                                  message.createdAt,
-                                sender:
-                                  message
-                                    .sender
-                                    ._id,
-                              },
-                            }
+                                ...conversation,
+                                latestMessage:
+                                  {
+                                    text: message.text,
+                                    createdAt:
+                                      message.createdAt,
+                                    sender:
+                                      message
+                                        .sender
+                                        ._id,
+                                  },
+                              }
                             : conversation,
                       )
                       .sort(
@@ -1477,13 +1553,13 @@ function MessagesPage() {
                             b
                               .latestMessage
                               ?.createdAt ||
-                            0,
+                              0,
                           ).getTime() -
                           new Date(
                             a
                               .latestMessage
                               ?.createdAt ||
-                            0,
+                              0,
                           ).getTime(),
                       ),
                 );
@@ -1578,7 +1654,7 @@ function MessagesPage() {
                 )}
 
                 {userSearch &&
-                  searchResults.length ===
+                searchResults.length ===
                   0 ? (
                   <p className="text-muted-foreground py-4 text-center text-sm">
                     No users found.

@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import { Server as HttpServer } from "http";
-
+import { registerReadReceiptSocket } from "./features/messages/readReceiptSocket";
 let io: Server;
 
 export const initializeSocket = (httpServer: HttpServer) => {
@@ -13,7 +13,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-
+    registerReadReceiptSocket(io, socket);
     // Join personal user room
     socket.on("joinUser", (userId: string) => {
       socket.join(`user:${userId}`);

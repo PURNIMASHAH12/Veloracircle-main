@@ -10,7 +10,7 @@ import userRoutes from "./routes/UserRoutes";
 import circleRoutes from "./routes/CircleRoutes";
 import conversationRoutes from "./routes/ConversationRoutes";
 import messageRoutes from "./routes/MessageRoutes";
-
+import messageReadRoutes from "./routes/MessageReadRoutes";
 import { initializeSocket } from "./socket";
 
 dotenv.config();
@@ -35,7 +35,10 @@ app.use("/api/users", userRoutes);
 app.use("/api/circles", circleRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/messages", messageRoutes);
-
+app.use(
+  "/api/message-read",
+  messageReadRoutes,
+);
 // Test route
 app.get("/", (_req, res) => {
   res.json({

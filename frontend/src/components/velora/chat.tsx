@@ -1,3 +1,4 @@
+import { ReadReceipt } from "@/components/velora/ReadReceipt";
 import {
   Bookmark,
   Copy,
@@ -203,6 +204,7 @@ export function MessageBubble({
     time: string;
     initials: string;
     self: boolean;
+    isRead?: boolean;
     kind?: "text" | "file" | "voice";
     file?: {
       name: string;
@@ -246,16 +248,22 @@ export function MessageBubble({
       >
         <div className="text-muted-foreground mb-1 flex items-center gap-2 text-[11px]">
           <span className="text-foreground/70 font-medium">
-            {self
-              ? "You"
-              : message.author}
+            {self ? "You" : message.author}
           </span>
 
           <span>
             {message.time}
           </span>
 
-          {self ? <MessageActions {...(onDelete ? { onDelete } : {})} /> : <MessageActions />}
+          {self ? (
+            <MessageActions
+              {...(onDelete
+                ? { onDelete }
+                : {})}
+            />
+          ) : (
+            <MessageActions />
+          )}
         </div>
 
         {message.replyTo ? (
@@ -276,8 +284,7 @@ export function MessageBubble({
               : "border-border bg-surface rounded-tl-md",
           )}
         >
-          {message.kind ===
-            "file" &&
+          {message.kind === "file" &&
           message.file ? (
             <div className="border-border bg-surface-2/70 mb-2 flex items-center gap-3 rounded-xl border p-2.5">
               <span className="bg-primary/10 text-primary grid h-9 w-9 shrink-0 place-items-center rounded-lg">
@@ -299,8 +306,7 @@ export function MessageBubble({
             </div>
           ) : null}
 
-          {message.kind ===
-          "voice" ? (
+          {message.kind === "voice" ? (
             <div className="flex items-center gap-3">
               <span className="bg-primary/15 text-primary grid h-8 w-8 place-items-center rounded-full">
                 <Play
@@ -339,14 +345,26 @@ export function MessageBubble({
           )}
         </div>
 
+        <div className="text-muted-foreground mt-1 flex items-center text-[11px]">
+          <span>
+            {message.time}
+          </span>
+
+          {self ? (
+            <ReadReceipt
+              isRead={Boolean(
+                message.isRead,
+              )}
+            />
+          ) : null}
+        </div>
+
         {message.reactions ? (
           <div className="mt-1.5 flex gap-1.5">
             {message.reactions.map(
               (reaction) => (
                 <span
-                  key={
-                    reaction.emoji
-                  }
+                  key={reaction.emoji}
                   className="border-border bg-surface-2/70 text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]"
                 >
                   {reaction.emoji}{" "}
@@ -360,6 +378,7 @@ export function MessageBubble({
     </div>
   );
 }
+
 
 /* =====================================================
    MESSAGE COMPOSER

@@ -4,6 +4,7 @@ export interface IMessage extends Document {
   conversation: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
   text: string;
+  readBy: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +27,15 @@ const messageSchema = new Schema<IMessage>(
       required: true,
       trim: true,
       maxlength: 2000,
+    },
+    readBy: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
     },
   },
   {
