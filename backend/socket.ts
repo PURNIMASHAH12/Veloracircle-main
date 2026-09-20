@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import { Server as HttpServer } from "http";
-import { registerReadReceiptSocket } from "./features/messages/readReceiptSocket";
+import { registerReadReceiptSocket } from "./features/messages/ReadReceiptSocket";
 let io: Server;
 
 export const initializeSocket = (httpServer: HttpServer) => {

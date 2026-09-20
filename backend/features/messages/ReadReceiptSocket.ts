@@ -2,7 +2,7 @@ import { Server, Socket } from "socket.io";
 
 import {
   markConversationMessagesAsRead,
-} from "./readReceipts";
+} from "./ReadReceipts";
 
 export const registerReadReceiptSocket = (
   io: Server,
