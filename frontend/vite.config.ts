@@ -36,22 +36,22 @@ export default defineConfig(({ command }) => ({
   ].filter(Boolean),
 
   server: {
-  host: "0.0.0.0",
-  port: 5173,
+    host: "0.0.0.0",
+    port: 5173,
 
-  proxy: {
-    "/api": {
-       target: "http://localhost:4000",
-      changeOrigin: true,
-      secure: false,
+    proxy: {
+      "/api": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+        secure: false,
+      },
+
+      "/socket.io": {
+        target: "http://localhost:5003",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
     },
-
-   "/socket.io": {
-  target: "http://localhost:5006",
-  changeOrigin: true,
-  secure: false,
-  ws: true,
-},
   },
-},
 }));
