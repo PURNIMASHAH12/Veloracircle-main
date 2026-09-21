@@ -135,10 +135,12 @@ function MessagesPage() {
     startCall,
     acceptCall,
     rejectCall,
+    inviteUsers,
     toggleMute,
     toggleCamera,
     endCall,
   } = useCall();
+
   const [
     backendConversations,
     setBackendConversations,
@@ -152,6 +154,7 @@ function MessagesPage() {
   ] = useState<BackendMessage[]>(
     [],
   );
+
   const [activeId, setActiveId] =
     useState<string | null>(null);
 
@@ -171,6 +174,7 @@ function MessagesPage() {
     setBackendMessages,
     onIncomingMessage: markMessagesAsRead,
   });
+
   const [tab, setTab] =
     useState("all");
 
@@ -380,6 +384,7 @@ function MessagesPage() {
               "📖 Marking messages as read:",
               activeId,
             );
+
             setBackendConversations(
               (previous) =>
                 previous.map(
@@ -702,6 +707,19 @@ function MessagesPage() {
     activeConversation?.otherUser?.name
       ?.slice(0, 2)
       .toUpperCase() || "VC";
+
+  /*
+   * Get the logged-in user's real name.
+   * This is used when starting a call so the
+   * receiver sees the caller's actual name.
+   */
+  const currentUser = JSON.parse(
+    localStorage.getItem("user") ||
+    "{}",
+  );
+
+  const currentUserName =
+    currentUser.name || "Velora User";
 
   /* =====================================================
      MESSAGE SEARCH
@@ -1367,8 +1385,12 @@ function MessagesPage() {
                 icon={Phone}
                 label="Start audio call"
                 onClick={() => {
-                  if (!activeConversation?.otherUser) {
-                    toast.error("Select a conversation first");
+                  if (
+                    !activeConversation?.otherUser
+                  ) {
+                    toast.error(
+                      "Select a conversation first",
+                    );
                     return;
                   }
 
@@ -1384,8 +1406,12 @@ function MessagesPage() {
                 icon={Video}
                 label="Start video call"
                 onClick={() => {
-                  if (!activeConversation?.otherUser) {
-                    toast.error("Select a conversation first");
+                  if (
+                    !activeConversation?.otherUser
+                  ) {
+                    toast.error(
+                      "Select a conversation first",
+                    );
                     return;
                   }
 
@@ -1700,6 +1726,7 @@ function MessagesPage() {
           </div>
         ) : null}
       </div>
+
       {callState.status === "ringing" ? (
         <IncomingCall
           callState={callState}
@@ -1709,6 +1736,7 @@ function MessagesPage() {
           onReject={rejectCall}
         />
       ) : null}
+
       {callState.status !== "idle" &&
         callState.status !== "ended" ? (
         <CallScreen
@@ -1717,16 +1745,10 @@ function MessagesPage() {
           remoteStream={remoteStreamRef.current}
           onMute={toggleMute}
           onCamera={toggleCamera}
-          onInvite={() => {
-            toast.info(
-              "Call invite feature will be added next.",
-            );
-          }}
+          onInviteUsers={inviteUsers}
           onEnd={endCall}
         />
       ) : null}
     </AppShell>
   );
 }
-
-

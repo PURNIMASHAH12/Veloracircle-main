@@ -58,4 +58,35 @@ router.get("/search", protect, async (req: AuthRequest, res) => {
     });
   }
 });
+// Get users available for call invitations
+router.get(
+  "/for-call",
+  protect,
+  async (req: AuthRequest, res) => {
+    try {
+      const User = (await import("../models/User")).default;
+
+      const users = await User.find({
+        _id: {
+          $ne: req.user?.userId,
+        },
+      })
+        .select("_id name email")
+        .limit(50);
+
+      res.status(200).json({
+        users,
+      });
+    } catch (error) {
+      console.error(
+        "Call user list error:",
+        error,
+      );
+
+      res.status(500).json({
+        message: "Server error",
+      });
+    }
+  },
+);
 export default router;
