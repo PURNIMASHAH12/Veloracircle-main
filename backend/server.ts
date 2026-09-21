@@ -26,7 +26,15 @@ connectDB();
 
 // Security middleware
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://192.168.1.78:5173",
+    ],
+    credentials: true,
+  }),
+);
 
 // Parse JSON requests
 app.use(express.json());

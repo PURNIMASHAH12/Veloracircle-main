@@ -198,7 +198,7 @@ function WelcomePage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/login",
+        "/api/auth/login",
         {
           method: "POST",
           headers: {
@@ -282,7 +282,7 @@ function WelcomePage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/register",
+        "/api/auth/register",
         {
           method: "POST",
           headers: {
@@ -354,7 +354,7 @@ function WelcomePage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/forgot-password",
+        "/api/auth/forgot-password",
         {
           method: "POST",
           headers: {
@@ -436,7 +436,7 @@ function WelcomePage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/otp/verify",
+        "/api/otp/verify",
         {
           method: "POST",
           headers: {
@@ -564,7 +564,7 @@ function WelcomePage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/otp/resend",
+        "/api/otp/resend",
         {
           method: "POST",
           headers: {
@@ -638,7 +638,7 @@ function WelcomePage() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/reset-password",
+        "/api/auth/reset-password",
         {
           method: "POST",
           headers: {
@@ -1307,3 +1307,4 @@ function WelcomePage() {
     </div>
   );
 }
+

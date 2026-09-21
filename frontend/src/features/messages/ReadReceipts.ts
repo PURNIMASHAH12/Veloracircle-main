@@ -16,3 +16,4 @@ export const isMessageRead = (
 
   return message.readBy.includes(currentUserId);
 };
+

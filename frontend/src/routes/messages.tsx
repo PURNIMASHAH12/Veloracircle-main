@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMessageReadStatus } from "@/hooks/useMessageReadStatus";
+import { useMessageReadStatus } from "@/hooks/UseMessageReadStatus";
 import { useRealtimeMessages } from "@/hooks/UseRealtimeMessages";
 import { useMarkMessagesAsRead } from "@/hooks/UseMarkMessagesAsRead";
+import { useCall } from "@/hooks/UseCall";
+import { CallScreen } from "@/features/calls/components/CallScreen";
+import { IncomingCall } from "@/features/calls/components/IncomingCall";
 import {
   ArrowLeft,
   MoreVertical,
@@ -125,6 +128,17 @@ type SearchUser = {
 ===================================================== */
 
 function MessagesPage() {
+  const {
+    callState,
+    localStreamRef,
+    remoteStreamRef,
+    startCall,
+    acceptCall,
+    rejectCall,
+    toggleMute,
+    toggleCamera,
+    endCall,
+  } = useCall();
   const [
     backendConversations,
     setBackendConversations,
@@ -138,25 +152,25 @@ function MessagesPage() {
   ] = useState<BackendMessage[]>(
     [],
   );
-const [activeId, setActiveId] =
-  useState<string | null>(null);
+  const [activeId, setActiveId] =
+    useState<string | null>(null);
 
-useMessageReadStatus({
-  activeId,
-  setBackendMessages,
-});
+  useMessageReadStatus({
+    activeId,
+    setBackendMessages,
+  });
 
-const {
-  markMessagesAsRead,
-} = useMarkMessagesAsRead({
-  activeId,
-});
+  const {
+    markMessagesAsRead,
+  } = useMarkMessagesAsRead({
+    activeId,
+  });
 
-useRealtimeMessages({
-  activeId,
-  setBackendMessages,
-  onIncomingMessage: markMessagesAsRead,
-});
+  useRealtimeMessages({
+    activeId,
+    setBackendMessages,
+    onIncomingMessage: markMessagesAsRead,
+  });
   const [tab, setTab] =
     useState("all");
 
@@ -266,7 +280,7 @@ useRealtimeMessages({
         try {
           const response =
             await fetch(
-              "http://localhost:5000/api/conversations",
+              "/api/conversations",
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
@@ -330,7 +344,7 @@ useRealtimeMessages({
         try {
           const response =
             await fetch(
-              `http://localhost:5000/api/messages/${activeId}`,
+              `/api/messages/${activeId}`,
               {
                 headers: {
                   Authorization: `Bearer ${token}`,
@@ -633,7 +647,7 @@ useRealtimeMessages({
       try {
         const response =
           await fetch(
-            `http://localhost:5000/api/users/search?q=${encodeURIComponent(
+            `/api/users/search?q=${encodeURIComponent(
               userSearch,
             )}`,
             {
@@ -765,7 +779,7 @@ useRealtimeMessages({
       try {
         const response =
           await fetch(
-            "http://localhost:5000/api/conversations",
+            "/api/conversations",
             {
               method: "POST",
               headers: {
@@ -794,7 +808,7 @@ useRealtimeMessages({
 
         const conversationResponse =
           await fetch(
-            "http://localhost:5000/api/conversations",
+            "/api/conversations",
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -864,7 +878,7 @@ useRealtimeMessages({
     try {
       const response =
         await fetch(
-          `http://localhost:5000/api/conversations/${conversationId}/pin`,
+          `/api/conversations/${conversationId}/pin`,
           {
             method: "PATCH",
             headers: {
@@ -939,7 +953,7 @@ useRealtimeMessages({
       try {
         const response =
           await fetch(
-            `http://localhost:5000/api/conversations/${conversationId}`,
+            `/api/conversations/${conversationId}`,
             {
               method: "DELETE",
               headers: {
@@ -1013,7 +1027,7 @@ useRealtimeMessages({
     try {
       const response =
         await fetch(
-          `http://localhost:5000/api/messages/${messageId}`,
+          `/api/messages/${messageId}`,
           {
             method: "DELETE",
             headers: {
@@ -1352,11 +1366,35 @@ useRealtimeMessages({
               <IconButton
                 icon={Phone}
                 label="Start audio call"
+                onClick={() => {
+                  if (!activeConversation?.otherUser) {
+                    toast.error("Select a conversation first");
+                    return;
+                  }
+
+                  void startCall(
+                    "audio",
+                    activeConversation.otherUser.id,
+                    activeConversation.otherUser.name,
+                  );
+                }}
               />
 
               <IconButton
                 icon={Video}
                 label="Start video call"
+                onClick={() => {
+                  if (!activeConversation?.otherUser) {
+                    toast.error("Select a conversation first");
+                    return;
+                  }
+
+                  void startCall(
+                    "video",
+                    activeConversation.otherUser.id,
+                    activeConversation.otherUser.name,
+                  );
+                }}
               />
 
               <IconButton
@@ -1662,6 +1700,33 @@ useRealtimeMessages({
           </div>
         ) : null}
       </div>
+      {callState.status === "ringing" ? (
+        <IncomingCall
+          callState={callState}
+          onAccept={() => {
+            void acceptCall();
+          }}
+          onReject={rejectCall}
+        />
+      ) : null}
+      {callState.status !== "idle" &&
+        callState.status !== "ended" ? (
+        <CallScreen
+          callState={callState}
+          localStream={localStreamRef.current}
+          remoteStream={remoteStreamRef.current}
+          onMute={toggleMute}
+          onCamera={toggleCamera}
+          onInvite={() => {
+            toast.info(
+              "Call invite feature will be added next.",
+            );
+          }}
+          onEnd={endCall}
+        />
+      ) : null}
     </AppShell>
   );
 }
+
+
