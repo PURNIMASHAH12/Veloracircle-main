@@ -4,7 +4,7 @@ import type {
   SetStateAction,
 } from "react";
 
-import socket from "@/socket";
+import { messageSocket } from "@/socket";
 
 type RealtimeMessage = {
   _id: string;
@@ -60,13 +60,13 @@ export function useRealtimeMessages({
       onIncomingMessage?.();
     };
 
-    socket.on(
+    messageSocket.on(
       "newMessage",
       handleNewMessage,
     );
 
     return () => {
-      socket.off(
+      messageSocket.off(
         "newMessage",
         handleNewMessage,
       );
@@ -77,5 +77,3 @@ export function useRealtimeMessages({
     onIncomingMessage,
   ]);
 }
-
-

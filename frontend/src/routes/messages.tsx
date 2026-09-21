@@ -49,7 +49,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
-import socket from "../socket";
+import { messageSocket } from "@/socket";
 
 export const Route =
   createFileRoute("/messages")({
@@ -220,52 +220,6 @@ function MessagesPage() {
     useRef<HTMLDivElement | null>(null);
 
   /* =====================================================
-     SOCKET CONNECTION
-  ===================================================== */
-
-  useEffect(() => {
-    const currentUser = JSON.parse(
-      localStorage.getItem("user") ||
-      "{}",
-    );
-
-    const currentUserId =
-      currentUser.id ||
-      currentUser._id;
-
-    if (!currentUserId) {
-      return;
-    }
-
-    socket.connect();
-
-    const joinUserRoom = () => {
-      socket.emit(
-        "joinUser",
-        currentUserId,
-      );
-    };
-
-    socket.on(
-      "connect",
-      joinUserRoom,
-    );
-
-    if (socket.connected) {
-      joinUserRoom();
-    }
-
-    return () => {
-      socket.off(
-        "connect",
-        joinUserRoom,
-      );
-
-      socket.disconnect();
-    };
-  }, []);
-
-  /* =====================================================
      LOAD CONVERSATIONS
   ===================================================== */
 
@@ -368,12 +322,12 @@ function MessagesPage() {
           setBackendMessages(
             data.data,
           );
-
-          const currentUser = JSON.parse(
-            localStorage.getItem(
-              "user",
-            ) || "{}",
-          );
+          const currentUser =
+            typeof window !== "undefined"
+              ? JSON.parse(
+                localStorage.getItem("user") || "{}",
+              )
+              : {};
 
           const currentUserId =
             currentUser.id ||
@@ -422,152 +376,25 @@ function MessagesPage() {
     }
 
     const joinRoom = () => {
-      socket.emit(
+      messageSocket.emit(
         "joinConversation",
         activeId,
       );
     };
 
-    if (socket.connected) {
+    if (messageSocket.connected) {
       joinRoom();
     } else {
-      socket.once(
+      messageSocket.once(
         "connect",
         joinRoom,
       );
     }
 
     return () => {
-      socket.off(
+      messageSocket.off(
         "connect",
         joinRoom,
-      );
-    };
-  }, [activeId]);
-
-  /* =====================================================
-     REAL-TIME NEW MESSAGE
-  ===================================================== */
-
-  useEffect(() => {
-    const handleNewMessage = (
-      message: BackendMessage,
-    ) => {
-      const messageConversationId =
-        message.conversation;
-
-      if (!messageConversationId) {
-        return;
-      }
-
-      if (
-        receivedMessageIds.current.has(
-          message._id,
-        )
-      ) {
-        return;
-      }
-
-      receivedMessageIds.current.add(
-        message._id,
-      );
-
-      const currentUser = JSON.parse(
-        localStorage.getItem(
-          "user",
-        ) || "{}",
-      );
-
-      const currentUserId =
-        currentUser.id ||
-        currentUser._id;
-
-      const isOwnMessage =
-        message.sender._id ===
-        currentUserId;
-
-      const isActiveConversation =
-        messageConversationId ===
-        activeId;
-
-      if (isActiveConversation) {
-        setBackendMessages(
-          (previous) => {
-            const updatedMessages =
-              [
-                ...previous,
-                message,
-              ];
-
-            return updatedMessages.filter(
-              (
-                item,
-                index,
-                array,
-              ) =>
-                array.findIndex(
-                  (existing) =>
-                    existing._id ===
-                    item._id,
-                ) === index,
-            );
-          },
-        );
-      }
-
-      setBackendConversations(
-        (previous) =>
-          previous
-            .map(
-              (conversation) =>
-                conversation.id ===
-                  messageConversationId
-                  ? {
-                    ...conversation,
-
-                    unreadCount:
-                      isActiveConversation ||
-                        isOwnMessage
-                        ? 0
-                        : conversation.unreadCount +
-                        1,
-
-                    latestMessage: {
-                      text: message.text,
-                      createdAt:
-                        message.createdAt,
-                      sender:
-                        message.sender
-                          ._id,
-                    },
-                  }
-                  : conversation,
-            )
-            .sort(
-              (a, b) =>
-                new Date(
-                  b.latestMessage
-                    ?.createdAt ||
-                  0,
-                ).getTime() -
-                new Date(
-                  a.latestMessage
-                    ?.createdAt ||
-                  0,
-                ).getTime(),
-            ),
-      );
-    };
-
-    socket.on(
-      "newMessage",
-      handleNewMessage,
-    );
-
-    return () => {
-      socket.off(
-        "newMessage",
-        handleNewMessage,
       );
     };
   }, [activeId]);
@@ -600,13 +427,13 @@ function MessagesPage() {
       );
     };
 
-    socket.on(
+    messageSocket.on(
       "messageDeleted",
       handleMessageDeleted,
     );
 
     return () => {
-      socket.off(
+      messageSocket.off(
         "messageDeleted",
         handleMessageDeleted,
       );
@@ -713,10 +540,13 @@ function MessagesPage() {
    * This is used when starting a call so the
    * receiver sees the caller's actual name.
    */
-  const currentUser = JSON.parse(
-    localStorage.getItem("user") ||
-    "{}",
-  );
+  const currentUser =
+    typeof window !== "undefined"
+      ? JSON.parse(
+        localStorage.getItem("user") ||
+        "{}",
+      )
+      : {};
 
   const currentUserName =
     currentUser.name || "Velora User";
@@ -1479,13 +1309,6 @@ function MessagesPage() {
 
               {filteredMessages.map(
                 (message) => {
-                  const currentUser =
-                    JSON.parse(
-                      localStorage.getItem(
-                        "user",
-                      ) || "{}",
-                    );
-
                   const currentUserId =
                     currentUser.id ||
                     currentUser._id;
@@ -1553,79 +1376,54 @@ function MessagesPage() {
           </div>
 
           <div className="pb-16 lg:pb-0">
-            <MessageComposer
-              placeholder={`Message ${activeName}…`}
-              conversationId={
-                activeId || ""
+           <MessageComposer
+  placeholder={`Message ${activeName}…`}
+  conversationId={activeId || ""}
+  onMessageSent={(message) => {
+    if (!message) {
+      return;
+    }
+
+    setBackendMessages((previous) => {
+      const alreadyExists = previous.some(
+        (existing) => existing._id === message._id,
+      );
+
+      if (alreadyExists) {
+        return previous;
+      }
+
+      return [...previous, message];
+    });
+
+    setBackendConversations((previous) =>
+      previous
+        .map((conversation) =>
+          conversation.id === activeId
+            ? {
+                ...conversation,
+                latestMessage: {
+                  text: message.text ?? "",
+                  createdAt:
+                    message.createdAt ??
+                    new Date().toISOString(),
+                  sender: message.sender?._id ?? "",
+                },
               }
-              onMessageSent={(
-                message,
-              ) => {
-                setBackendMessages(
-                  (previous) => {
-                    const updatedMessages =
-                      [
-                        ...previous,
-                        message,
-                      ];
-
-                    return updatedMessages.filter(
-                      (
-                        item,
-                        index,
-                        array,
-                      ) =>
-                        array.findIndex(
-                          (existing) =>
-                            existing._id ===
-                            item._id,
-                        ) === index,
-                    );
-                  },
-                );
-
-                setBackendConversations(
-                  (previous) =>
-                    previous
-                      .map(
-                        (
-                          conversation,
-                        ) =>
-                          conversation.id ===
-                            activeId
-                            ? {
-                              ...conversation,
-                              latestMessage:
-                              {
-                                text: message.text,
-                                createdAt:
-                                  message.createdAt,
-                                sender:
-                                  message
-                                    .sender
-                                    ._id,
-                              },
-                            }
-                            : conversation,
-                      )
-                      .sort(
-                        (a, b) =>
-                          new Date(
-                            b
-                              .latestMessage
-                              ?.createdAt ||
-                            0,
-                          ).getTime() -
-                          new Date(
-                            a
-                              .latestMessage
-                              ?.createdAt ||
-                            0,
-                          ).getTime(),
-                      ),
-                );
-              }}
-            />
+            : conversation,
+        )
+        .sort(
+          (a, b) =>
+            new Date(
+              b.latestMessage?.createdAt || 0,
+            ).getTime() -
+            new Date(
+              a.latestMessage?.createdAt || 0,
+            ).getTime(),
+        ),
+    );
+  }}
+/>
           </div>
         </section>
 

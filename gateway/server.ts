@@ -9,10 +9,6 @@ const app = express();
 
 const PORT = process.env.PORT || 4000;
 
-const BACKEND_URL =
-    process.env.BACKEND_URL ||
-    "http://localhost:5000";
-
 const AUTH_SERVICE_URL =
     process.env.AUTH_SERVICE_URL ||
     "http://localhost:5001";
@@ -135,23 +131,13 @@ app.use(
     },
   }),
 );
-// Existing backend
-app.use(
-    "/api",
-    createProxyMiddleware({
-        target: BACKEND_URL,
-        changeOrigin: true,
-    }),
-);
 
 app.listen(PORT, () => {
     console.log(
         `API Gateway running on port ${PORT}`,
     );
 
-    console.log(
-        `Forwarding API requests to ${BACKEND_URL}`,
-    );
+   
 
     console.log(
         `Auth requests forwarded to ${AUTH_SERVICE_URL}`,

@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import http from "http";
 import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
-
+import { setIO } from "./socket";
 import "./models/User";
 
 import messageRoutes from "./routes/MessageRoutes";
@@ -54,6 +54,7 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
+setIO(io);
 export { io };
 // Socket authentication
 io.use((socket, next) => {

@@ -48,7 +48,9 @@ function ErrorComponent({
   error: Error;
   reset: () => void;
 }) {
-  console.error(error);
+  console.error("MESSAGES PAGE ERROR:", error);
+console.error("ERROR MESSAGE:", error?.message);
+console.error("ERROR STACK:", error?.stack);
   const router = useRouter();
 
   return (

@@ -8,6 +8,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const Message_1 = __importDefault(require("../models/Message"));
 const Conversation_1 = __importDefault(require("../models/Conversation"));
+const socket_1 = require("../socket");
 const getUserFromToken = (req) => {
     try {
         const authHeader = req.headers.authorization;
@@ -95,6 +96,8 @@ const sendMessage = async (req, res) => {
             text: cleanText,
         });
         const populatedMessage = await Message_1.default.findById(message._id).populate("sender", "name email");
+        const io = (0, socket_1.getIO)();
+        io.to(`conversation:${conversationId}`).emit("newMessage", populatedMessage);
         res.status(201).json({
             message: populatedMessage,
         });

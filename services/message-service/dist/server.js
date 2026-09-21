@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.io = void 0;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -10,6 +11,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const http_1 = __importDefault(require("http"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const socket_io_1 = require("socket.io");
+const socket_1 = require("./socket");
 require("./models/User");
 const MessageRoutes_1 = __importDefault(require("./routes/MessageRoutes"));
 const ConversationRoutes_1 = __importDefault(require("./routes/ConversationRoutes"));
@@ -40,6 +42,8 @@ const io = new socket_io_1.Server(httpServer, {
         credentials: true,
     },
 });
+exports.io = io;
+(0, socket_1.setIO)(io);
 // Socket authentication
 io.use((socket, next) => {
     try {
