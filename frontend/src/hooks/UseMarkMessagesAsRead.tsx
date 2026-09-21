@@ -1,6 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
-import socket from "@/socket";
+import {
+  messageSocket,
+  connectMessageSocket,
+} from "@/socket";
 
 type UseMarkMessagesAsReadProps = {
   activeId: string | null;
@@ -9,6 +12,14 @@ type UseMarkMessagesAsReadProps = {
 export function useMarkMessagesAsRead({
   activeId,
 }: UseMarkMessagesAsReadProps) {
+  useEffect(() => {
+    connectMessageSocket();
+
+    return () => {
+      messageSocket.disconnect();
+    };
+  }, []);
+
   const markMessagesAsRead = useCallback(() => {
     if (!activeId) {
       return;
@@ -25,7 +36,7 @@ export function useMarkMessagesAsRead({
       return;
     }
 
-    socket.emit("markMessagesAsRead", {
+    messageSocket.emit("markMessagesAsRead", {
       conversationId: activeId,
       userId: currentUserId,
     });
@@ -35,5 +46,3 @@ export function useMarkMessagesAsRead({
     markMessagesAsRead,
   };
 }
-
-

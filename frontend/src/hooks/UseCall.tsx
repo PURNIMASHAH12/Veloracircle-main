@@ -5,7 +5,10 @@ import {
     useState,
 } from "react";
 
-import socket, { connectSocket } from "@/socket";
+import {
+    callSocket as socket,
+    connectCallSocket,
+} from "@/socket";
 
 import {
     createPeerConnection,
@@ -98,8 +101,8 @@ const initialCallState: CallState = {
 export const useCall = () => {
     const [callState, setCallState] =
         useState<CallState>(initialCallState);
-            useEffect(() => {
-        connectSocket();
+    useEffect(() => {
+        connectCallSocket();
 
         return () => {
             socket.disconnect();
