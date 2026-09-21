@@ -322,11 +322,14 @@ function MessagesPage() {
           setBackendMessages(
             data.data,
           );
+
           const currentUser =
             typeof window !== "undefined"
               ? JSON.parse(
-                localStorage.getItem("user") || "{}",
-              )
+                  localStorage.getItem(
+                    "user",
+                  ) || "{}",
+                )
               : {};
 
           const currentUserId =
@@ -346,11 +349,11 @@ function MessagesPage() {
                     conversation,
                   ) =>
                     conversation.id ===
-                      activeId
+                    activeId
                       ? {
-                        ...conversation,
-                        unreadCount: 0,
-                      }
+                          ...conversation,
+                          unreadCount: 0,
+                        }
                       : conversation,
                 ),
             );
@@ -535,17 +538,13 @@ function MessagesPage() {
       ?.slice(0, 2)
       .toUpperCase() || "VC";
 
-  /*
-   * Get the logged-in user's real name.
-   * This is used when starting a call so the
-   * receiver sees the caller's actual name.
-   */
   const currentUser =
     typeof window !== "undefined"
       ? JSON.parse(
-        localStorage.getItem("user") ||
-        "{}",
-      )
+          localStorage.getItem(
+            "user",
+          ) || "{}",
+        )
       : {};
 
   const currentUserName =
@@ -647,7 +646,7 @@ function MessagesPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-            "Failed to create conversation",
+              "Failed to create conversation",
           );
         }
 
@@ -741,7 +740,7 @@ function MessagesPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-          "Failed to update pin",
+            "Failed to update pin",
         );
       }
 
@@ -750,11 +749,11 @@ function MessagesPage() {
           previous.map(
             (conversation) =>
               conversation.id ===
-                conversationId
+              conversationId
                 ? {
-                  ...conversation,
-                  pinned: data.pinned,
-                }
+                    ...conversation,
+                    pinned: data.pinned,
+                  }
                 : conversation,
           ),
       );
@@ -816,7 +815,7 @@ function MessagesPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-            "Failed to delete conversation",
+              "Failed to delete conversation",
           );
         }
 
@@ -892,7 +891,7 @@ function MessagesPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-          "Failed to delete message",
+            "Failed to delete message",
         );
       }
 
@@ -928,19 +927,20 @@ function MessagesPage() {
 
   return (
     <AppShell flush>
-      <div className="flex h-full min-h-0">
+      <div className="flex h-full min-h-0 overflow-hidden">
+
         {/* =================================================
             CONVERSATION LIST
         ================================================= */}
 
         <div
           className={cn(
-            "border-border flex min-h-0 w-full flex-col border-r md:w-[320px] md:shrink-0",
+            "border-border flex h-full min-h-0 w-full flex-col overflow-hidden border-r md:w-[320px] md:shrink-0",
             mobileOpen &&
-            "hidden md:flex",
+              "hidden md:flex",
           )}
         >
-          <div className="space-y-3 p-3">
+          <div className="space-y-3 p-3 shrink-0">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search
@@ -1043,9 +1043,9 @@ function MessagesPage() {
                       ) => {
                         if (
                           event.key ===
-                          "Enter" ||
+                            "Enter" ||
                           event.key ===
-                          " "
+                            " "
                         ) {
                           setActiveId(
                             conversation.id,
@@ -1058,8 +1058,8 @@ function MessagesPage() {
                       className={cn(
                         "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left transition-colors",
                         conversation.id ===
-                        activeId &&
-                        "bg-muted",
+                          activeId &&
+                          "bg-muted",
                       )}
                     >
                       <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
@@ -1161,9 +1161,9 @@ function MessagesPage() {
 
         <section
           className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col",
+            "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
             !mobileOpen &&
-            "hidden md:flex",
+              "hidden md:flex",
           )}
         >
           <header className="border-border bg-background/70 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-3 py-2.5 backdrop-blur-xl sm:px-4">
@@ -1253,14 +1253,68 @@ function MessagesPage() {
                 }}
               />
 
-              <IconButton
-                icon={MoreVertical}
-                label="More options"
-              />
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  asChild
+                >
+                  <div>
+                    <IconButton
+                      icon={MoreVertical}
+                      label="More options"
+                    />
+                  </div>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent
+                  align="end"
+                  className="w-36"
+                >
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      if (
+                        !activeConversation
+                      ) {
+                        toast.error(
+                          "Select a conversation first",
+                        );
+                        return;
+                      }
+
+                      void togglePin(
+                        activeConversation.id,
+                      );
+                    }}
+                  >
+                    {activeConversation?.pinned
+                      ? "Unpin conversation"
+                      : "Pin conversation"}
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onSelect={() => {
+                      if (
+                        !activeConversation
+                      ) {
+                        toast.error(
+                          "Select a conversation first",
+                        );
+                        return;
+                      }
+
+                      void deleteConversation(
+                        activeConversation.id,
+                      );
+                    }}
+                  >
+                    Delete conversation
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 flex flex-col">
+          <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
             {showMessageSearch ? (
               <div className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-2 sm:px-6">
                 <Search className="text-muted-foreground h-4 w-4 shrink-0" />
@@ -1349,24 +1403,24 @@ function MessagesPage() {
                         ),
                         initials: isSelf
                           ? currentUser.name
-                            ?.slice(
-                              0,
-                              2,
-                            )
-                            .toUpperCase() ||
-                          "ME"
+                              ?.slice(
+                                0,
+                                2,
+                              )
+                              .toUpperCase() ||
+                            "ME"
                           : activeInitials,
                         self: isSelf,
                         isRead,
                       }}
                       {...(isSelf
                         ? {
-                          onDelete: () => {
-                            deleteMessage(
-                              message._id,
-                            );
-                          },
-                        }
+                            onDelete: () => {
+                              deleteMessage(
+                                message._id,
+                              );
+                            },
+                          }
                         : {})}
                     />
                   );
@@ -1375,55 +1429,78 @@ function MessagesPage() {
             </div>
           </div>
 
-          <div className="pb-16 lg:pb-0">
-           <MessageComposer
-  placeholder={`Message ${activeName}…`}
-  conversationId={activeId || ""}
-  onMessageSent={(message) => {
-    if (!message) {
-      return;
-    }
+          <div className="shrink-0 pb-16 lg:pb-0">
+            <MessageComposer
+              placeholder={`Message ${activeName}…`}
+              conversationId={activeId || ""}
+              onMessageSent={(message) => {
+                if (!message) {
+                  return;
+                }
 
-    setBackendMessages((previous) => {
-      const alreadyExists = previous.some(
-        (existing) => existing._id === message._id,
-      );
+                setBackendMessages(
+                  (previous) => {
+                    const alreadyExists =
+                      previous.some(
+                        (existing) =>
+                          existing._id ===
+                          message._id,
+                      );
 
-      if (alreadyExists) {
-        return previous;
-      }
+                    if (alreadyExists) {
+                      return previous;
+                    }
 
-      return [...previous, message];
-    });
+                    return [
+                      ...previous,
+                      message,
+                    ];
+                  },
+                );
 
-    setBackendConversations((previous) =>
-      previous
-        .map((conversation) =>
-          conversation.id === activeId
-            ? {
-                ...conversation,
-                latestMessage: {
-                  text: message.text ?? "",
-                  createdAt:
-                    message.createdAt ??
-                    new Date().toISOString(),
-                  sender: message.sender?._id ?? "",
-                },
-              }
-            : conversation,
-        )
-        .sort(
-          (a, b) =>
-            new Date(
-              b.latestMessage?.createdAt || 0,
-            ).getTime() -
-            new Date(
-              a.latestMessage?.createdAt || 0,
-            ).getTime(),
-        ),
-    );
-  }}
-/>
+                setBackendConversations(
+                  (previous) =>
+                    previous
+                      .map(
+                        (
+                          conversation,
+                        ) =>
+                          conversation.id ===
+                          activeId
+                            ? {
+                                ...conversation,
+                                latestMessage: {
+                                  text:
+                                    message.text ??
+                                    "",
+                                  createdAt:
+                                    message.createdAt ??
+                                    new Date().toISOString(),
+                                  sender:
+                                    message
+                                      .sender
+                                      ?._id ??
+                                    "",
+                                },
+                              }
+                            : conversation,
+                      )
+                      .sort(
+                        (a, b) =>
+                          new Date(
+                            b.latestMessage
+                              ?.createdAt ||
+                              0,
+                          ).getTime() -
+                          new Date(
+                            a.latestMessage
+                              ?.createdAt ||
+                              0,
+                          ).getTime(),
+                      ),
+                );
+              }}
+            />
           </div>
         </section>
 
@@ -1513,7 +1590,7 @@ function MessagesPage() {
                 )}
 
                 {userSearch &&
-                  searchResults.length ===
+                searchResults.length ===
                   0 ? (
                   <p className="text-muted-foreground py-4 text-center text-sm">
                     No users found.
@@ -1536,7 +1613,7 @@ function MessagesPage() {
       ) : null}
 
       {callState.status !== "idle" &&
-        callState.status !== "ended" ? (
+      callState.status !== "ended" ? (
         <CallScreen
           callState={callState}
           localStream={localStreamRef.current}

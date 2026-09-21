@@ -264,7 +264,7 @@ export function AppShell({
     useState(false);
 
   return (
-    <div className="bg-background flex min-h-dvh w-full overflow-hidden">
+    <div className="bg-background flex h-dvh w-full overflow-hidden">
       {/* Desktop sidebar */}
       <aside
         className={cn(
@@ -355,10 +355,10 @@ export function AppShell({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
           <main
             className={cn(
-              "scrollbar-slim min-h-0 min-w-0 flex-1 overflow-y-auto",
+              "min-h-0 min-w-0 flex-1 overflow-hidden",
               flush
                 ? ""
                 : "px-4 pt-5 pb-24 sm:px-6 lg:pb-8",
