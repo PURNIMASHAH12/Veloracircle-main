@@ -45,8 +45,14 @@ export default defineConfig(({ command }) => ({
         changeOrigin: true,
         secure: false,
       },
+      "/socket.io/calls": {
+        target: "http://localhost:5006",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
 
-      "/socket.io": {
+      "/socket.io/messages": {
         target: "http://localhost:5003",
         changeOrigin: true,
         secure: false,
