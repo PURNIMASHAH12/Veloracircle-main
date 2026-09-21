@@ -83,10 +83,8 @@ export const sendMessage = async (
     await Conversation.findByIdAndUpdate(conversationId, {
       updatedAt: new Date(),
     });
-
     const populatedMessage = await Message.findById(message._id)
-      .populate("sender", "name email")
-      .populate("conversation");
+      .populate("sender", "name email");
     // Send to the conversation room
     getIO()
       .to(`conversation:${conversationId}`)

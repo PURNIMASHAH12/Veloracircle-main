@@ -9,3 +9,13 @@ export const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // maximum 10 OTP verification attempts
+  message: {
+    message: "Too many OTP attempts. Please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import http from "http";
 
 import authRoutes from "./routes/AuthRoutes";
+import otpRoutes from "./routes/OtpRoutes";
 import connectDB from "./config/db";
 import userRoutes from "./routes/UserRoutes";
 import circleRoutes from "./routes/CircleRoutes";
@@ -31,6 +32,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/otp", otpRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/circles", circleRoutes);
 app.use("/api/conversations", conversationRoutes);
@@ -39,6 +41,7 @@ app.use(
   "/api/message-read",
   messageReadRoutes,
 );
+
 // Test route
 app.get("/", (_req, res) => {
   res.json({
