@@ -4,7 +4,7 @@ import type {
   SetStateAction,
 } from "react";
 
-import socket from "@/socket";
+import { messageSocket } from "@/socket";
 
 type ReadStatusMessage = {
   _id: string;
@@ -60,13 +60,13 @@ export function useMessageReadStatus<
       );
     };
 
-    socket.on(
+    messageSocket.on(
       "messagesRead",
       handleMessagesRead,
     );
 
     return () => {
-      socket.off(
+      messageSocket.off(
         "messagesRead",
         handleMessagesRead,
       );

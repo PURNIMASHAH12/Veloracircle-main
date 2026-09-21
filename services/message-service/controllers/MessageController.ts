@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 import Message from "../models/Message";
 import Conversation from "../models/Conversation";
-
+import { io } from "../server";
 interface AuthRequest extends Request {
     user?: {
         id: string;
@@ -149,6 +149,15 @@ export const sendMessage = async (
                 "sender",
                 "name email",
             );
+
+        if (populatedMessage) {
+            io.to(
+                `conversation:${conversationId}`,
+            ).emit(
+                "newMessage",
+                populatedMessage,
+            );
+        }
 
         res.status(201).json({
             message: populatedMessage,

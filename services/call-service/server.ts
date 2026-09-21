@@ -26,6 +26,7 @@ const JWT_SECRET =
   process.env.JWT_SECRET;
 
 const io = new Server(httpServer, {
+  path: "/socket.io/calls",
   cors: {
     origin: true,
     credentials: true,

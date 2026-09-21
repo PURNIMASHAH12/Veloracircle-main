@@ -34,6 +34,7 @@ app.get("/", (_req, res) => {
 });
 // Socket.IO
 const io = new socket_io_1.Server(httpServer, {
+    path: "/socket.io/messages",
     cors: {
         origin: true,
         credentials: true,

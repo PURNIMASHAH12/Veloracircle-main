@@ -48,12 +48,13 @@ app.get("/", (_req, res) => {
 
 // Socket.IO
 const io = new Server(httpServer, {
+  path: "/socket.io/messages",
   cors: {
     origin: true,
     credentials: true,
   },
 });
-
+export { io };
 // Socket authentication
 io.use((socket, next) => {
   try {
