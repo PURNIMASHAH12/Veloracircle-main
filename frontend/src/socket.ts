@@ -1,20 +1,44 @@
 import { io } from "socket.io-client";
 
-const socket = io({
-  path: "/socket.io",
+// Call Service socket
+const callSocket = io({
+  path: "/socket.io/calls",
   autoConnect: false,
 });
 
-export const connectSocket = () => {
+// Message Service socket
+const messageSocket = io({
+  path: "/socket.io/messages",
+  autoConnect: false,
+});
+
+export const connectCallSocket = () => {
   const token = localStorage.getItem("token");
 
-  socket.auth = {
+  callSocket.auth = {
     token,
   };
 
-  if (!socket.connected) {
-    socket.connect();
+  if (!callSocket.connected) {
+    callSocket.connect();
   }
 };
 
-export default socket;
+export const connectMessageSocket = () => {
+  const token = localStorage.getItem("token");
+
+  messageSocket.auth = {
+    token,
+  };
+
+  if (!messageSocket.connected) {
+    messageSocket.connect();
+  }
+};
+
+export {
+  callSocket,
+  messageSocket,
+};
+
+export default callSocket;
