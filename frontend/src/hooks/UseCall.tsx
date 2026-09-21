@@ -5,7 +5,7 @@ import {
     useState,
 } from "react";
 
-import socket from "@/socket";
+import socket, { connectSocket } from "@/socket";
 
 import {
     createPeerConnection,
@@ -98,6 +98,13 @@ const initialCallState: CallState = {
 export const useCall = () => {
     const [callState, setCallState] =
         useState<CallState>(initialCallState);
+            useEffect(() => {
+        connectSocket();
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
 
     /*
      * One local stream is shared by every
