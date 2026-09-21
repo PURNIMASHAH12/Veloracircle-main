@@ -1,18 +1,33 @@
 import dotenv from "dotenv";
 import { Request, Response } from "express";
-
-dotenv.config();
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+
 import User from "../models/User";
+import Otp from "../models/Otp";
+
+import {
+  createOtp,
+  verifyOtp,
+} from "../services/OtpService";
+
+import {
+  sendOtpEmail,
+} from "../services/EmailService";
+
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is not defined");
-};
+}
 
-const isStrongPassword = (password: string): boolean => {
+type OtpPurpose = "register" | "login" | "reset";
+
+const isStrongPassword = (
+  password: string,
+): boolean => {
   return (
     password.length >= 8 &&
     /[A-Z]/.test(password) &&
@@ -21,6 +36,20 @@ const isStrongPassword = (password: string): boolean => {
     /[^A-Za-z0-9]/.test(password)
   );
 };
+
+const validPurpose = (
+  purpose: string,
+): purpose is OtpPurpose => {
+  return (
+    purpose === "register" ||
+    purpose === "login" ||
+    purpose === "reset"
+  );
+};
+
+// =========================
+// REGISTER
+// =========================
 
 export const register = async (
   req: Request,
@@ -31,7 +60,8 @@ export const register = async (
 
     if (!name || !email || !password) {
       res.status(400).json({
-        message: "Name, email and password are required",
+        message:
+          "Name, email and password are required",
       });
       return;
     }
@@ -44,7 +74,8 @@ export const register = async (
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail =
+      email.trim().toLowerCase();
 
     const existingUser = await User.findOne({
       email: normalizedEmail,
@@ -57,7 +88,8 @@ export const register = async (
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword =
+      await bcrypt.hash(password, 12);
 
     const user = await User.create({
       name: name.trim(),
@@ -67,19 +99,40 @@ export const register = async (
       emailVerified: false,
     });
 
+    const { otp } = await createOtp({
+      userId: user._id.toString(),
+      email: user.email,
+      purpose: "register",
+    });
+
+    await sendOtpEmail({
+      email: user.email,
+      otp,
+      purpose: "register",
+    });
+
     res.status(201).json({
-      message: "User registered successfully",
+      message:
+        "User registered successfully. OTP sent to your email.",
+      requiresOtp: true,
       userId: user._id,
       email: user.email,
     });
   } catch (error) {
-    console.error("Auth Service register error:", error);
+    console.error(
+      "Auth Service register error:",
+      error,
+    );
 
     res.status(500).json({
       message: "Server error",
     });
   }
 };
+
+// =========================
+// LOGIN
+// =========================
 
 export const login = async (
   req: Request,
@@ -90,12 +143,14 @@ export const login = async (
 
     if (!email || !password) {
       res.status(400).json({
-        message: "Email and password are required",
+        message:
+          "Email and password are required",
       });
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail =
+      email.trim().toLowerCase();
 
     const user = await User.findOne({
       email: normalizedEmail,
@@ -108,10 +163,11 @@ export const login = async (
       return;
     }
 
-    const isPasswordCorrect = await bcrypt.compare(
-      password,
-      user.password,
-    );
+    const isPasswordCorrect =
+      await bcrypt.compare(
+        password,
+        user.password,
+      );
 
     if (!isPasswordCorrect) {
       res.status(401).json({
@@ -131,6 +187,131 @@ export const login = async (
       return;
     }
 
+    const { otp } = await createOtp({
+      userId: user._id.toString(),
+      email: user.email,
+      purpose: "login",
+    });
+
+    await sendOtpEmail({
+      email: user.email,
+      otp,
+      purpose: "login",
+    });
+
+    res.status(200).json({
+      message:
+        "Password verified. OTP sent to your email.",
+      requiresOtp: true,
+      userId: user._id,
+      email: user.email,
+    });
+  } catch (error) {
+    console.error(
+      "Auth Service login error:",
+      error,
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// =========================
+// VERIFY OTP
+// =========================
+
+export const verifyEmailOtp = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const {
+      userId,
+      otp,
+      purpose,
+    } = req.body;
+
+    if (!userId || !otp || !purpose) {
+      res.status(400).json({
+        message:
+          "User ID, OTP and purpose are required",
+      });
+      return;
+    }
+
+    if (!validPurpose(purpose)) {
+      res.status(400).json({
+        message: "Invalid OTP purpose",
+      });
+      return;
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      res.status(400).json({
+        message:
+          "OTP must be a 6-digit number",
+      });
+      return;
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({
+        message: "User not found",
+      });
+      return;
+    }
+
+    const isValid = await verifyOtp({
+      userId: user._id.toString(),
+      otp,
+      purpose,
+    });
+
+    if (!isValid) {
+      res.status(400).json({
+        message: "Invalid or expired OTP",
+      });
+      return;
+    }
+
+    if (purpose === "register") {
+      user.emailVerified = true;
+      await user.save();
+
+      res.status(200).json({
+        message:
+          "Email verified successfully",
+        verified: true,
+      });
+
+      return;
+    }
+
+    if (purpose === "reset") {
+      const resetToken = jwt.sign(
+        {
+          userId: user._id.toString(),
+          purpose: "password-reset",
+        },
+        JWT_SECRET,
+        {
+          expiresIn: "10m",
+        },
+      );
+
+      res.status(200).json({
+        message:
+          "OTP verified successfully",
+        resetToken,
+      });
+
+      return;
+    }
+
     const token = jwt.sign(
       {
         userId: user._id.toString(),
@@ -139,7 +320,7 @@ export const login = async (
       },
       JWT_SECRET,
       {
-        expiresIn: "7d",
+        expiresIn: "1d",
       },
     );
 
@@ -154,10 +335,262 @@ export const login = async (
       },
     });
   } catch (error) {
-    console.error("Auth Service login error:", error);
+    console.error(
+      "OTP verification error:",
+      error,
+    );
 
     res.status(500).json({
       message: "Server error",
+    });
+  }
+};
+
+// =========================
+// RESEND OTP
+// =========================
+
+export const resendOtp = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const {
+      userId,
+      purpose,
+    } = req.body;
+
+    if (!userId || !purpose) {
+      res.status(400).json({
+        message:
+          "User ID and purpose are required",
+      });
+      return;
+    }
+
+    if (!validPurpose(purpose)) {
+      res.status(400).json({
+        message: "Invalid OTP purpose",
+      });
+      return;
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.status(404).json({
+        message: "User not found",
+      });
+      return;
+    }
+
+    const latestOtp = await Otp.findOne({
+      userId: user._id,
+      purpose,
+    }).sort({ createdAt: -1 });
+
+    if (latestOtp) {
+      const secondsSinceLastOtp =
+        (Date.now() -
+          latestOtp.createdAt.getTime()) /
+        1000;
+
+      if (secondsSinceLastOtp < 60) {
+        const remainingSeconds =
+          Math.ceil(
+            60 - secondsSinceLastOtp,
+          );
+
+        res.status(429).json({
+          message: `Please wait ${remainingSeconds} seconds before requesting a new OTP`,
+        });
+
+        return;
+      }
+    }
+
+    const { otp } = await createOtp({
+      userId: user._id.toString(),
+      email: user.email,
+      purpose,
+    });
+
+    await sendOtpEmail({
+      email: user.email,
+      otp,
+      purpose,
+    });
+
+    res.status(200).json({
+      message:
+        "A new OTP has been sent to your email",
+    });
+  } catch (error) {
+    console.error(
+      "Resend OTP error:",
+      error,
+    );
+
+    res.status(500).json({
+      message: "Unable to resend OTP",
+    });
+  }
+};
+
+// =========================
+// FORGOT PASSWORD
+// =========================
+
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({
+        message: "Email is required",
+      });
+      return;
+    }
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    if (!user) {
+      res.status(404).json({
+        message: "User not found",
+      });
+      return;
+    }
+
+    const { otp } = await createOtp({
+      userId: user._id.toString(),
+      email: user.email,
+      purpose: "reset",
+    });
+
+    await sendOtpEmail({
+      email: user.email,
+      otp,
+      purpose: "reset",
+    });
+
+    res.status(200).json({
+      message:
+        "Password reset OTP sent to your email",
+      requiresOtp: true,
+      userId: user._id,
+    });
+  } catch (error) {
+    console.error(
+      "Forgot password error:",
+      error,
+    );
+
+    res.status(500).json({
+      message: "Unable to send reset OTP",
+    });
+  }
+};
+
+// =========================
+// RESET PASSWORD
+// =========================
+
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const {
+      resetToken,
+      password,
+    } = req.body;
+
+    if (!resetToken || !password) {
+      res.status(400).json({
+        message:
+          "Reset token and password are required",
+      });
+      return;
+    }
+
+    if (!isStrongPassword(password)) {
+      res.status(400).json({
+        message:
+          "Password must be at least 8 characters and contain uppercase, lowercase, number and special character",
+      });
+      return;
+    }
+
+    const decoded =
+      jwt.verify(
+        resetToken,
+        JWT_SECRET,
+      ) as {
+        userId: string;
+        purpose: string;
+      };
+
+    if (
+      decoded.purpose !==
+      "password-reset"
+    ) {
+      res.status(401).json({
+        message: "Invalid reset token",
+      });
+      return;
+    }
+
+    const user = await User.findById(
+      decoded.userId,
+    );
+
+    if (!user) {
+      res.status(404).json({
+        message: "User not found",
+      });
+      return;
+    }
+
+    const isSamePassword =
+      await bcrypt.compare(
+        password,
+        user.password,
+      );
+
+    if (isSamePassword) {
+      res.status(400).json({
+        message:
+          "New password must be different from your old password",
+      });
+      return;
+    }
+
+    user.password =
+      await bcrypt.hash(password, 12);
+
+    await user.save();
+
+    res.status(200).json({
+      message:
+        "Password reset successfully",
+    });
+  } catch (error) {
+    console.error(
+      "Reset password error:",
+      error,
+    );
+
+    res.status(401).json({
+      message:
+        "Invalid or expired reset token",
     });
   }
 };

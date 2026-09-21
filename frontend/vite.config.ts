@@ -41,7 +41,7 @@ export default defineConfig(({ command }) => ({
 
   proxy: {
     "/api": {
-      target: "http://192.168.1.78:5000",
+       target: "http://localhost:4000",
       changeOrigin: true,
       secure: false,
     },
