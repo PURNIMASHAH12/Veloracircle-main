@@ -156,15 +156,8 @@ export const login = async (
       purpose: "login",
     });
 
-    // Send OTP to email
-    await sendOtpEmail({
-      email: user.email,
-      otp,
-      purpose: "login",
-    });
-
-    // Do NOT generate JWT yet.
-    // JWT will be generated after OTP verification.
+    // Respond immediately so the OTP screen appears without
+    // waiting for the email provider.
     res.status(200).json({
       message:
         "Password verified. OTP sent to your email.",
@@ -172,6 +165,23 @@ export const login = async (
       userId: user._id,
       email: user.email,
     });
+
+    // Send OTP email in the background.
+    // This prevents slow SMTP/email-provider response time
+    // from delaying the OTP screen.
+    void sendOtpEmail({
+      email: user.email,
+      otp,
+      purpose: "login",
+    }).catch((error) => {
+      console.error(
+        "Login OTP email error:",
+        error
+      );
+    });
+
+    // Do NOT generate JWT yet.
+    // JWT will be generated after OTP verification.
   } catch (error) {
     console.error("Login error:", error);
 
