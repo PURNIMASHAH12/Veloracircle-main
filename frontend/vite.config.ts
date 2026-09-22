@@ -45,6 +45,11 @@ export default defineConfig(({ command }) => ({
         changeOrigin: true,
         secure: false,
       },
+      "/uploads": {
+        target: "http://localhost:5003",
+        changeOrigin: true,
+        secure: false,
+      },
       "/socket.io/calls": {
         target: "http://localhost:5006",
         changeOrigin: true,

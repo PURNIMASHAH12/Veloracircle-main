@@ -1472,6 +1472,7 @@ function MessagesPage() {
                                 message.file.size /
                                 1024
                               ).toFixed(1)} KB`,
+                              url: message.file.url,
                             },
                           }
                           : {}),

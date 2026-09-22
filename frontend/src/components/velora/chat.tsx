@@ -211,6 +211,7 @@ export function MessageBubble({
     file?: {
       name: string;
       size: string;
+      url: string;
     };
     replyTo?: {
       author: string;
@@ -296,7 +297,7 @@ export function MessageBubble({
                 />
               </span>
 
-              <span className="min-w-0">
+              <div className="min-w-0">
                 <span className="block truncate text-xs font-medium">
                   {message.file.name}
                 </span>
@@ -304,10 +305,67 @@ export function MessageBubble({
                 <span className="text-muted-foreground block text-[11px]">
                   {message.file.size}
                 </span>
-              </span>
+                <div className="mt-1">
+                  <details className="relative inline-block">
+                    <summary className="text-primary cursor-pointer list-none text-xs font-medium hover:underline">
+                      Download
+                    </summary>
+
+                    <div className="bg-background border-border absolute bottom-full left-0 z-50 mb-2 w-28 overflow-hidden rounded-lg border shadow-lg">
+                      <button
+                        type="button"
+                        className="hover:bg-muted block w-full px-3 py-2 text-left text-xs"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(
+                              message.file?.url || "",
+                            );
+
+                            if (!response.ok) {
+                              throw new Error(
+                                "Failed to open file",
+                              );
+                            }
+
+                            const blob =
+                              await response.blob();
+
+                            const blobUrl =
+                              URL.createObjectURL(blob);
+
+                            window.open(
+                              blobUrl,
+                              "_blank",
+                              "noopener,noreferrer",
+                            );
+
+                            setTimeout(() => {
+                              URL.revokeObjectURL(blobUrl);
+                            }, 60000);
+                          } catch (error) {
+                            console.error(
+                              "Open file error:",
+                              error,
+                            );
+                          }
+                        }}
+                      >
+                        Open
+                      </button>
+
+                      <a
+                        href={message.file.url}
+                        download={message.file.name}
+                        className="hover:bg-muted block w-full px-3 py-2 text-xs"
+                      >
+                        Save as
+                      </a>
+                    </div>
+                  </details>
+                </div>
+              </div>
             </div>
           ) : null}
-
           {message.kind === "voice" ? (
             <div className="flex items-center gap-3">
               <span className="bg-primary/15 text-primary grid h-8 w-8 place-items-center rounded-full">
