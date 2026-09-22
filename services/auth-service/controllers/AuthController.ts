@@ -383,6 +383,16 @@ export const resendOtp = async (
       });
       return;
     }
+    if (
+  purpose === "login" &&
+  user.role === "admin" &&
+  !user.isActive
+) {
+  res.status(403).json({
+    message: "Your account has been disabled",
+  });
+  return;
+}
 
     const latestOtp = await Otp.findOne({
       userId: user._id,
@@ -625,6 +635,12 @@ export const adminLogin = async (
       });
       return;
     }
+    if (!user.isActive) {
+  res.status(403).json({
+    message: "Your account has been disabled",
+  });
+  return;
+}
 
     const isPasswordValid = await bcrypt.compare(
       password,

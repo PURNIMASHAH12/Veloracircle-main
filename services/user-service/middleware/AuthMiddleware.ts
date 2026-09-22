@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-
+import User from "../models/User";
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -18,11 +18,11 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const protect = (
+export const protect = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction,
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -58,10 +58,28 @@ export const protect = (
       role: "user" | "admin" | "superadmin";
     };
 
+    const user = await User.findById(
+      decoded.userId,
+    ).select("name email role isActive");
+
+    if (!user) {
+      res.status(401).json({
+        message: "User account not found",
+      });
+      return;
+    }
+
+    if (!user.isActive) {
+      res.status(403).json({
+        message: "Your account has been disabled",
+      });
+      return;
+    }
+
     req.user = {
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role,
     };
 
     next();
@@ -73,7 +91,6 @@ export const protect = (
     });
   }
 };
-
 export const requireSuperadmin = (
   req: AuthRequest,
   res: Response,
@@ -89,6 +106,30 @@ export const requireSuperadmin = (
   if (req.user.role !== "superadmin") {
     res.status(403).json({
       message: "Superadmin access required",
+    });
+    return;
+  }
+
+  next();
+};
+export const requireAdmin = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): void => {
+  if (!req.user) {
+    res.status(401).json({
+      message: "Authentication required",
+    });
+    return;
+  }
+
+  if (
+    req.user.role !== "admin" &&
+    req.user.role !== "superadmin"
+  ) {
+    res.status(403).json({
+      message: "Admin access required",
     });
     return;
   }

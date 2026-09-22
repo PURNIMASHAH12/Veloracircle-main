@@ -5,7 +5,11 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 
 import { CircleMemberManager } from "@/components/velora/CircleMemberManager";
@@ -94,18 +98,12 @@ export function CreateCircleModal({
 
   const [saving, setSaving] =
     useState(false);
-  const [availableCircles, setAvailableCircles] =
-    useState<Circle[]>([]);
-
-  const [selectedCircleId, setSelectedCircleId] =
-    useState(circleId);
-
-  const [loadingCircles, setLoadingCircles] =
-    useState(false);
 
   async function handleCreateCircle() {
     if (!name.trim()) {
-      toast.error("Circle name is required");
+      toast.error(
+        "Circle name is required",
+      );
       return;
     }
 
@@ -180,7 +178,9 @@ export function CreateCircleModal({
               placeholder="e.g. Project Nova"
               value={name}
               onChange={(event) =>
-                setName(event.target.value)
+                setName(
+                  event.target.value,
+                )
               }
             />
           </div>
@@ -301,6 +301,7 @@ export function ScheduleMeetingModal({
 
   const [done, setDone] =
     useState(false);
+
   const [title, setTitle] =
     useState("");
 
@@ -315,51 +316,109 @@ export function ScheduleMeetingModal({
 
   const [saving, setSaving] =
     useState(false);
+
+  /*
+   * =====================================================
+   * REAL CIRCLE LIST FOR MEETING SELECTION
+   * =====================================================
+   */
+
+  const [availableCircles, setAvailableCircles] =
+    useState<Circle[]>([]);
+
+  const [selectedCircleId, setSelectedCircleId] =
+    useState(circleId);
+
+  const [loadingCircles, setLoadingCircles] =
+    useState(false);
+
+  /*
+   * Keep the selected Circle synchronized
+   * with the Circle from the page.
+   */
+  useEffect(() => {
+    setSelectedCircleId(circleId);
+  }, [circleId]);
+
+  /*
+   * Load the user's real Circles whenever
+   * the Schedule Meeting modal is opened.
+   */
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCircles() {
+      try {
+        setLoadingCircles(true);
+
+        const result =
+          await getMyCircles();
+
+        if (cancelled) {
+          return;
+        }
+
+        setAvailableCircles(result);
+
+        /*
+         * If the current Circle exists in the
+         * user's real Circle list, select it.
+         */
+        const currentCircleExists =
+          result.some(
+            (circle) =>
+              circle._id === circleId,
+          );
+
+        if (currentCircleExists) {
+          setSelectedCircleId(circleId);
+        } else {
+          const firstCircle = result[0];
+
+          if (firstCircle) {
+            setSelectedCircleId(
+              firstCircle._id,
+            );
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Load Circles error:",
+          error,
+        );
+
+        if (!cancelled) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to load Circles",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingCircles(false);
+        }
+      }
+    }
+
+    void loadCircles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, circleId]);
+
   return (
     <Dialog
       open={open}
-      onOpenChange={async (v) => {
-        setOpen(v);
+      onOpenChange={(value) => {
+        setOpen(value);
 
-        if (v) {
-          try {
-            setLoadingCircles(true);
-
-            const result =
-              await getMyCircles();
-
-            setAvailableCircles(result);
-
-            const currentCircleExists =
-              result.some(
-                (circle) =>
-                  circle._id === circleId,
-              );
-
-            if (currentCircleExists) {
-              setSelectedCircleId(circleId);
-            } else if (result.length > 0) {
-              setSelectedCircleId(
-                result[0]._id,
-              );
-            }
-          } catch (error) {
-            console.error(
-              "Load Circles error:",
-              error,
-            );
-
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Failed to load Circles",
-            );
-          } finally {
-            setLoadingCircles(false);
-          }
-        }
-
-        if (!v) {
+        if (!value) {
           setTimeout(
             () => setDone(false),
             200,
@@ -425,7 +484,9 @@ export function ScheduleMeetingModal({
                   placeholder="Product Strategy"
                   value={title}
                   onChange={(event) =>
-                    setTitle(event.target.value)
+                    setTitle(
+                      event.target.value,
+                    )
                   }
                 />
               </div>
@@ -441,7 +502,9 @@ export function ScheduleMeetingModal({
                     type="date"
                     value={date}
                     onChange={(event) =>
-                      setDate(event.target.value)
+                      setDate(
+                        event.target.value,
+                      )
                     }
                   />
                 </div>
@@ -456,7 +519,9 @@ export function ScheduleMeetingModal({
                     type="time"
                     value={time}
                     onChange={(event) =>
-                      setTime(event.target.value)
+                      setTime(
+                        event.target.value,
+                      )
                     }
                   />
                 </div>
@@ -495,6 +560,10 @@ export function ScheduleMeetingModal({
                 </div>
               </div>
 
+              {/* =====================================================
+                  CIRCLE / PARTICIPANTS
+                  ===================================================== */}
+
               <div className="space-y-2">
                 <Label htmlFor="meeting-circle">
                   Circle / participants
@@ -502,7 +571,9 @@ export function ScheduleMeetingModal({
 
                 <Select
                   value={selectedCircleId}
-                  onValueChange={setSelectedCircleId}
+                  onValueChange={
+                    setSelectedCircleId
+                  }
                   disabled={
                     loadingCircles ||
                     availableCircles.length === 0
@@ -522,17 +593,29 @@ export function ScheduleMeetingModal({
                   </SelectTrigger>
 
                   <SelectContent>
-                    {availableCircles.map((circle) => (
-                      <SelectItem
-                        key={circle._id}
-                        value={circle._id}
-                      >
-                        {circle.name}
-                      </SelectItem>
-                    ))}
+                    {availableCircles.map(
+                      (circle) => (
+                        <SelectItem
+                          key={circle._id}
+                          value={circle._id}
+                        >
+                          {circle.name}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
-              </div>              <div className="space-y-2">
+
+                {!loadingCircles &&
+                  availableCircles.length ===
+                  0 && (
+                    <p className="text-muted-foreground text-xs">
+                      No Circles available.
+                    </p>
+                  )}
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="meeting-description">
                   Description
                 </Label>
@@ -579,7 +662,10 @@ export function ScheduleMeetingModal({
               </Button>
 
               <Button
-                disabled={saving}
+                disabled={
+                  saving ||
+                  !selectedCircleId
+                }
                 onClick={async () => {
                   if (!title.trim()) {
                     toast.error(
@@ -591,6 +677,13 @@ export function ScheduleMeetingModal({
                   if (!date || !time) {
                     toast.error(
                       "Meeting date and time are required",
+                    );
+                    return;
+                  }
+
+                  if (!selectedCircleId) {
+                    toast.error(
+                      "Please select a Circle",
                     );
                     return;
                   }
@@ -627,9 +720,12 @@ export function ScheduleMeetingModal({
                     await createCircleMeeting(
                       selectedCircleId,
                       {
-                        title: title.trim(),
+                        title:
+                          title.trim(),
+
                         description:
                           description.trim(),
+
                         scheduledAt:
                           scheduledAt.toISOString(),
                       },
@@ -687,14 +783,6 @@ export function ManageCircleModal({
 
   const [saving, setSaving] =
     useState(false);
-    const [availableCircles, setAvailableCircles] =
-  useState<Circle[]>([]);
-
-const [selectedCircleId, setSelectedCircleId] =
-  useState(circleId);
-
-const [loadingCircles, setLoadingCircles] =
-  useState(false);
 
   return (
     <Dialog>
@@ -731,7 +819,9 @@ const [loadingCircles, setLoadingCircles] =
               id="manage-circle-name"
               value={name}
               onChange={(event) =>
-                setName(event.target.value)
+                setName(
+                  event.target.value,
+                )
               }
             />
           </div>
@@ -822,6 +912,7 @@ const [loadingCircles, setLoadingCircles] =
             Leave Circle
           </Button>
         </div>
+
         {/* Delete Circle */}
         <div className="border-border border-t pt-4">
           <Button
@@ -861,6 +952,7 @@ const [loadingCircles, setLoadingCircles] =
             Delete Circle
           </Button>
         </div>
+
         <DialogFooter>
           <Button
             asChild

@@ -4,10 +4,11 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
- role: "user" | "admin" | "superadmin";
+  role: "user" | "admin" | "superadmin";
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
+  isActive: boolean;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -36,7 +37,10 @@ const UserSchema = new Schema<IUser>(
       enum: ["user", "admin", "superadmin"],
       default: "user",
     },
-
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     emailVerified: {
       type: Boolean,
       default: false,

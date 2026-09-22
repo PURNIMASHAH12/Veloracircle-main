@@ -174,3 +174,59 @@ export async function createCircle(
 
   return result.circle;
 }
+export type AdminCircleMember = {
+  _id: string;
+  name: string;
+  email: string;
+  role: "user" | "admin" | "superadmin";
+};
+
+export type AdminCircle = {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  members: AdminCircleMember[];
+  admins: string[];
+};
+
+export async function getAllCirclesForAdmin(): Promise<
+  AdminCircle[]
+> {
+  const token =
+    localStorage.getItem("token");
+
+  const response = await fetch(
+    "/api/circles/admin/all",
+    {
+      method: "GET",
+      headers: {
+        Authorization:
+          `Bearer ${token}`,
+      },
+    },
+  );
+
+  const data =
+    await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+        "Failed to load Circles",
+    );
+  }
+
+  if (
+    !data.circles ||
+    !Array.isArray(data.circles)
+  ) {
+    throw new Error(
+      "Invalid Circles response from server",
+    );
+  }
+
+  return data.circles;
+}

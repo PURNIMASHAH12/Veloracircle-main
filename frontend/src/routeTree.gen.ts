@@ -18,7 +18,9 @@ import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminCirclesRouteImport } from './routes/admin.circles'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as CirclesIndexRouteImport } from './routes/circles.index'
 import { Route as CirclesCircleIdRouteImport } from './routes/circles.$circleId'
 import { Route as MeetingMeetingIdRouteImport } from './routes/meeting.$meetingId'
@@ -70,9 +72,19 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCirclesRoute = AdminCirclesRouteImport.update({
+  id: '/admin/circles',
+  path: '/admin/circles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin/login',
   path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CirclesIndexRoute = CirclesIndexRouteImport.update({
@@ -110,7 +122,9 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
+  '/admin/circles': typeof AdminCirclesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
   '/superadmin/login': typeof SuperadminLoginRoute
@@ -127,7 +141,9 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
+  '/admin/circles': typeof AdminCirclesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
   '/superadmin/login': typeof SuperadminLoginRoute
@@ -145,7 +161,9 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
+  '/admin/circles': typeof AdminCirclesRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/users': typeof AdminUsersRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
   '/superadmin/login': typeof SuperadminLoginRoute
@@ -164,7 +182,9 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
+    | '/admin/circles'
     | '/admin/login'
+    | '/admin/users'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
     | '/superadmin/login'
@@ -181,7 +201,9 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
+    | '/admin/circles'
     | '/admin/login'
+    | '/admin/users'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
     | '/superadmin/login'
@@ -198,7 +220,9 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
+    | '/admin/circles'
     | '/admin/login'
+    | '/admin/users'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
     | '/superadmin/login'
@@ -216,7 +240,9 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   SavedRoute: typeof SavedRoute
   SettingsRoute: typeof SettingsRoute
+  AdminCirclesRoute: typeof AdminCirclesRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   CirclesCircleIdRoute: typeof CirclesCircleIdRoute
   MeetingMeetingIdRoute: typeof MeetingMeetingIdRoute
   SuperadminLoginRoute: typeof SuperadminLoginRoute
@@ -290,11 +316,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/circles': {
+      id: '/admin/circles'
+      path: '/admin/circles'
+      fullPath: '/admin/circles'
+      preLoaderRoute: typeof AdminCirclesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/circles/': {
@@ -344,7 +384,9 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   SavedRoute: SavedRoute,
   SettingsRoute: SettingsRoute,
+  AdminCirclesRoute: AdminCirclesRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminUsersRoute: AdminUsersRoute,
   CirclesCircleIdRoute: CirclesCircleIdRoute,
   MeetingMeetingIdRoute: MeetingMeetingIdRoute,
   SuperadminLoginRoute: SuperadminLoginRoute,

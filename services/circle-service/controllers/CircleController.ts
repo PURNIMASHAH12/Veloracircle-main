@@ -7,9 +7,8 @@ import User from "../models/User";
 
 type AuthUser = {
   id: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "superadmin";
 };
-
 const getUserFromToken = (
   req: Request,
 ): AuthUser | null => {
@@ -40,7 +39,7 @@ const getUserFromToken = (
       id?: string;
       userId?: string;
       _id?: string;
-      role?: "user" | "admin";
+      role?: "user" | "admin" | "superadmin";
     };
 
     const id =
@@ -183,7 +182,92 @@ export const getMyCircles =
       });
     }
   };
+/* GET ALL CIRCLES - ADMIN ONLY */
 
+export const getAllCircles =
+  async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    try {
+      const user =
+        getUserFromToken(req);
+
+      if (!user) {
+        res.status(401).json({
+          message:
+            "Authentication required",
+        });
+        return;
+      }
+
+      if (
+        user.role !== "admin" &&
+        user.role !== "superadmin"
+      ) {
+        res.status(403).json({
+          message:
+            "Admin access required",
+        });
+        return;
+      }
+
+      const circles =
+        await Circle.find()
+          .select(
+            "name description createdBy createdAt updatedAt members admins",
+          )
+          .sort({
+            updatedAt: -1,
+          });
+
+      const circlesWithMembers =
+        await Promise.all(
+          circles.map(
+            async (circle) => {
+              const members =
+                await User.find({
+                  _id: {
+                    $in: circle.members,
+                  },
+                }).select(
+                  "name email role",
+                );
+
+              return {
+                id: circle._id,
+                name: circle.name,
+                description:
+                  circle.description,
+                createdBy:
+                  circle.createdBy,
+                createdAt:
+                  circle.createdAt,
+                updatedAt:
+                  circle.updatedAt,
+                members,
+                admins:
+                  circle.admins,
+              };
+            },
+          ),
+        );
+
+      res.status(200).json({
+        circles:
+          circlesWithMembers,
+      });
+    } catch (error) {
+      console.error(
+        "Get all circles error:",
+        error,
+      );
+
+      res.status(500).json({
+        message: "Server error",
+      });
+    }
+  };
 /* GET SINGLE CIRCLE */
 
 export const getCircle =
@@ -514,6 +598,7 @@ export const removeMember =
 export default {
   createCircle,
   getMyCircles,
+  getAllCircles,
   getCircle,
   addMember,
   removeMember,

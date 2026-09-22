@@ -4,6 +4,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   role: "user" | "admin" | "superadmin";
+  isActive: boolean;
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +30,10 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ["user", "admin", "superadmin"],
       default: "user",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
 
     emailVerified: {

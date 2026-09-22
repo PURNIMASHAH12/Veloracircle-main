@@ -1,48 +1,59 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Activity, MailPlus, Search, ShieldAlert, Users } from "lucide-react";
+import {
+  createFileRoute,
+  useNavigate,
+} from "@tanstack/react-router";
+import {
+  ShieldAlert,
+  Users,
+  UserCheck,
+  UserX,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AdminShell } from "@/components/velora/AdminShell";
 import { StatCard } from "@/components/velora/cards";
 import {
-  Avatar,
   PrivacyBadge,
   SectionHeading,
 } from "@/components/velora/primitives";
-import { circles, members } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/admin/")({
+type AdminUser = {
+  _id: string;
+  name: string;
+  email: string;
+  role:
+  | "user"
+  | "admin"
+  | "superadmin";
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const Route = createFileRoute(
+  "/admin/",
+)({
   head: () => ({
     meta: [
-      { title: "Management console — Velora Circle" },
+      {
+        title:
+          "Admin Dashboard — Velora Circle",
+      },
       {
         name: "description",
         content:
-          "Owner and Admin console for Circle statistics, member roles and invitations. Never visible to members.",
+          "Velora Circle system administration dashboard.",
       },
       {
         property: "og:title",
-        content: "Management console — Velora Circle",
+        content:
+          "Admin Dashboard — Velora Circle",
       },
       {
         property: "og:description",
-        content: "Administrative controls for Circle owners.",
+        content:
+          "Velora Circle system administration dashboard.",
       },
     ],
   }),
@@ -52,23 +63,37 @@ export const Route = createFileRoute("/admin/")({
 function AdminPage() {
   const navigate = useNavigate();
 
-  const [query, setQuery] = useState("");
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingAuth, setCheckingAuth] =
+    useState(true);
+
+  const [users, setUsers] =
+    useState<AdminUser[]>([]);
+
+  const [loadingUsers, setLoadingUsers] =
+    useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const token =
+      localStorage.getItem("token");
+
+    const storedUser =
+      localStorage.getItem("user");
 
     if (!token || !storedUser) {
-      navigate({ to: "/admin/login" });
+      navigate({
+        to: "/admin/login",
+      });
       return;
     }
 
     try {
-      const user = JSON.parse(storedUser);
+      const user =
+        JSON.parse(storedUser);
 
       if (user.role !== "admin") {
-        navigate({ to: "/admin/login" });
+        navigate({
+          to: "/admin/login",
+        });
         return;
       }
 
@@ -77,204 +102,238 @@ function AdminPage() {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
 
-      navigate({ to: "/admin/login" });
+      navigate({
+        to: "/admin/login",
+      });
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (checkingAuth) {
+      return;
+    }
+
+    const loadUsers = async () => {
+      try {
+        setLoadingUsers(true);
+
+        const token =
+          localStorage.getItem("token");
+
+        if (!token) {
+          navigate({
+            to: "/admin/login",
+          });
+          return;
+        }
+
+        const response =
+          await fetch(
+            "/api/users/admin/all",
+            {
+              method: "GET",
+              headers: {
+                Authorization:
+                  `Bearer ${token}`,
+              },
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          if (
+            response.status === 403 &&
+            data.message ===
+            "Your account has been disabled"
+          ) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+
+            toast.error(
+              "Your account has been disabled",
+            );
+
+            navigate({
+              to: "/admin/login",
+            });
+
+            return;
+          }
+
+          throw new Error(
+            data.message ||
+            "Failed to load users",
+          );
+        }
+
+        if (
+          !data.users ||
+          !Array.isArray(
+            data.users,
+          )
+        ) {
+          throw new Error(
+            "Invalid users response from server",
+          );
+        }
+
+        setUsers(data.users);
+      } catch (error) {
+        console.error(
+          "Load admin dashboard users error:",
+          error,
+        );
+
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to load users",
+        );
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    void loadUsers();
+  }, [
+    checkingAuth,
+    navigate,
+  ]);
+
+  const totalUsers =
+    users.length;
+
+  const adminCount =
+    users.filter(
+      (user) =>
+        user.role === "admin",
+    ).length;
+
+  const verifiedCount =
+    users.filter(
+      (user) =>
+        user.emailVerified,
+    ).length;
+
+  const pendingCount =
+    totalUsers -
+    verifiedCount;
 
   if (checkingAuth) {
     return null;
   }
 
-  const list = members.filter((m) =>
-    m.name.toLowerCase().includes(query.toLowerCase()),
-  );
-
   return (
     <AdminShell>
       <div className="mx-auto max-w-5xl space-y-9">
-        <header className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold sm:text-3xl">
-                Management console
-              </h1>
+        <header>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold sm:text-3xl">
+              Admin Dashboard
+            </h1>
 
-              <PrivacyBadge
-                label="Owner / Admin only"
-                tone="accent"
-                icon={ShieldAlert}
-              />
-            </div>
-
-            <p className="text-muted-foreground mt-1.5 text-sm">
-              Statistics and member data shown here never appear in member
-              views.
-            </p>
+            <PrivacyBadge
+              label="System Admin only"
+              tone="accent"
+              icon={ShieldAlert}
+            />
           </div>
 
-          <Button onClick={() => toast.success("Invitation sent")}>
-            <MailPlus className="h-4 w-4" />
-            Invite member
-          </Button>
+          <p className="text-muted-foreground mt-1.5 text-sm">
+            Overview of the Velora Circle
+            platform.
+          </p>
         </header>
 
         <section>
           <SectionHeading
-            title="Circle overview"
-            description="Alpha Circle"
+            title="Platform overview"
+            description={
+              loadingUsers
+                ? "Loading current data..."
+                : "Current data from MongoDB"
+            }
           />
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Active conversations"
-              value="38"
-              hint="+6 this week"
-              icon={Activity}
+              label="Total users"
+              value={String(
+                totalUsers,
+              )}
+              hint="Registered users"
+              icon={Users}
               tone="brand"
             />
 
             <StatCard
-              label="Members"
-              value="125"
-              hint="Hidden from members"
-              icon={Users}
-            />
-
-            <StatCard
-              label="Pending invites"
-              value="9"
-              hint="3 expiring soon"
-              icon={MailPlus}
-            />
-
-            <StatCard
-              label="Reports"
-              value="2"
-              hint="Awaiting review"
+              label="Admins"
+              value={String(
+                adminCount,
+              )}
+              hint="System administrators"
               icon={ShieldAlert}
+            />
+
+            <StatCard
+              label="Verified users"
+              value={String(
+                verifiedCount,
+              )}
+              hint="Email verified"
+              icon={UserCheck}
+            />
+
+            <StatCard
+              label="Pending verification"
+              value={String(
+                pendingCount,
+              )}
+              hint="Email not verified"
+              icon={UserX}
             />
           </div>
         </section>
 
         <section>
-          <SectionHeading title="Member management" />
+          <SectionHeading
+            title="Administration"
+            description="Manage the platform using the sections in the sidebar."
+          />
 
-          <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
-            <div className="relative">
-              <Search
-                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
-                aria-hidden
-              />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="surface-panel rounded-2xl p-5">
+              <div className="mb-2 flex items-center gap-3">
+                <Users className="h-5 w-5 text-primary" />
 
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search members"
-                aria-label="Search members"
-                className="pl-9"
-              />
+                <h2 className="font-semibold">
+                  User Management
+                </h2>
+              </div>
+
+              <p className="text-muted-foreground text-sm">
+                View registered users,
+                manage system roles,
+                and remove users.
+              </p>
             </div>
 
-            <Select defaultValue={circles[0]!.id}>
-              <SelectTrigger
-                className="w-full"
-                aria-label="Filter by Circle"
-              >
-                <SelectValue />
-              </SelectTrigger>
+            <div className="surface-panel rounded-2xl p-5">
+              <div className="mb-2 flex items-center gap-3">
+                <ShieldAlert className="h-5 w-5 text-primary" />
 
-              <SelectContent>
-                {circles.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                <h2 className="font-semibold">
+                  Circle Management
+                </h2>
+              </div>
 
-          <div className="surface-panel overflow-x-auto rounded-2xl">
-            <table className="w-full min-w-[620px] text-left text-[13px]">
-              <thead>
-                <tr className="text-muted-foreground border-border border-b text-[11px] tracking-wider uppercase">
-                  <th className="px-4 py-3 font-medium">Member</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {list.map((m) => (
-                  <tr
-                    key={m.id}
-                    className="border-border hover:bg-accent/30 border-b last:border-b-0"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar initials={m.initials} size="sm" />
-
-                        <span className="truncate font-medium">
-                          {m.name}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <PrivacyBadge
-                        label={m.role}
-                        tone={m.role === "Owner" ? "accent" : "muted"}
-                        icon={Users}
-                      />
-                    </td>
-
-                    <td className="text-muted-foreground px-4 py-3">
-                      {m.status}
-                    </td>
-
-                    <td className="text-muted-foreground px-4 py-3">
-                      {m.joined}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            aria-label={`Manage ${m.name}`}
-                          >
-                            Manage
-                          </Button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onSelect={() => toast("Role updated")}
-                          >
-                            Change role
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem
-                            onSelect={() => toast("Access suspended")}
-                          >
-                            Suspend access
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onSelect={() => toast("Member removed")}
-                          >
-                            Remove
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              <p className="text-muted-foreground text-sm">
+                View all Circles, their
+                members, and Circle Admins.
+              </p>
+            </div>
           </div>
         </section>
       </div>
