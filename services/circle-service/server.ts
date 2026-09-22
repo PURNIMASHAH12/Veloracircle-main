@@ -11,6 +11,8 @@ import circleLeaveRoutes from "./routes/CircleLeaveRoutes";
 import circleAdminRoutes from "./routes/CircleAdminRoutes";
 import circleMeetingRoutes from "./routes/CircleMeetingRoutes";
 import startCircleMeetingReminderScheduler from "./services/CircleMeetingReminderScheduler";
+import circleDeleteRoutes from "./routes/CircleDeleteRoutes";
+import circleInternalRoutes from "./routes/CircleInternalRoutes";
 dotenv.config();
 
 const app = express();
@@ -55,6 +57,14 @@ app.use(
 app.use(
   "/api/circles",
   circleMeetingRoutes,
+);
+app.use(
+  "/api/circles",
+  circleDeleteRoutes,
+);
+app.use(
+  "/internal/circles",
+  circleInternalRoutes,
 );
 
 if (!MONGO_URI) {

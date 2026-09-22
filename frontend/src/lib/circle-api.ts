@@ -4,7 +4,40 @@ export type Circle = {
   description?: string;
   members?: string[];
   admins?: string[];
+
+  // Used only for the existing Circle card UI.
+  privacy?: string;
+  activity?: string;
 };
+
+export async function getMyCircles(): Promise<
+  Circle[]
+> {
+  const token =
+    localStorage.getItem("token");
+
+  const response = await fetch(
+    "/api/circles",
+    {
+      headers: {
+        Authorization:
+          `Bearer ${token}`,
+      },
+    },
+  );
+
+  const data =
+    await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+        "Failed to load Circles",
+    );
+  }
+
+  return data.circles || [];
+}
 
 export async function getCircle(
   circleId: string,
@@ -16,21 +49,25 @@ export async function getCircle(
     `/api/circles/${circleId}`,
     {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization:
+          `Bearer ${token}`,
       },
     },
   );
 
+  const data =
+    await response.json();
+
   if (!response.ok) {
     throw new Error(
-      "Failed to load Circle",
+      data.message ||
+        "Failed to load Circle",
     );
   }
 
-  const data = await response.json();
-
   return data.circle;
 }
+
 export async function editCircle(
   circleId: string,
   data: {
@@ -47,8 +84,11 @@ export async function editCircle(
       method: "PATCH",
 
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        "Content-Type":
+          "application/json",
+
+        Authorization:
+          `Bearer ${token}`,
       },
 
       body: JSON.stringify(data),
@@ -62,6 +102,73 @@ export async function editCircle(
     throw new Error(
       result.message ||
         "Failed to update Circle",
+    );
+  }
+
+  return result.circle;
+}
+
+export async function deleteCircle(
+  circleId: string,
+): Promise<void> {
+  const token =
+    localStorage.getItem("token");
+
+  const response = await fetch(
+    `/api/circles/${circleId}`,
+    {
+      method: "DELETE",
+
+      headers: {
+        Authorization:
+          `Bearer ${token}`,
+      },
+    },
+  );
+
+  const result =
+    await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ||
+        "Failed to delete Circle",
+    );
+  }
+}
+export async function createCircle(
+  data: {
+    name: string;
+    description?: string;
+  },
+): Promise<Circle> {
+  const token =
+    localStorage.getItem("token");
+
+  const response = await fetch(
+    "/api/circles",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+
+        Authorization:
+          `Bearer ${token}`,
+      },
+
+      body: JSON.stringify(data),
+    },
+  );
+
+  const result =
+    await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ||
+        "Failed to create Circle",
     );
   }
 

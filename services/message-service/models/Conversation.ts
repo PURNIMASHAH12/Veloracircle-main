@@ -7,6 +7,7 @@ export interface IConversation
   extends Document {
   participants: mongoose.Types.ObjectId[];
   type: "direct" | "circle";
+  circleId?: mongoose.Types.ObjectId;
 
   unreadCounts: Map<string, number>;
 
@@ -29,10 +30,17 @@ const conversationSchema =
         },
       ],
 
-      type: {
+           type: {
         type: String,
         enum: ["direct", "circle"],
         required: true,
+      },
+
+      circleId: {
+        type: Schema.Types.ObjectId,
+        ref: "Circle",
+        default: undefined,
+        index: true,
       },
 
       unreadCounts: {

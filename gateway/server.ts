@@ -70,6 +70,16 @@ app.use(
   }),
 );
 app.use(
+  "/api/circle-conversations",
+  createProxyMiddleware({
+    target: CONVERSATION_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: {
+      "^/": "/api/circle-conversations/",
+    },
+  }),
+);
+app.use(
   "/api/notifications",
   createProxyMiddleware({
     target: NOTIFICATION_SERVICE_URL,

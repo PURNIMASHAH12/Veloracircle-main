@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { CircleMemberManager } from "@/components/velora/CircleMemberManager";
 import { Button } from "@/components/ui/button";
 import { createCircleMeeting } from "@/lib/circle-meeting-api";
+
 import {
   Dialog,
   DialogContent,
@@ -31,8 +32,14 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { circles } from "@/lib/mock-data";
-import { editCircle } from "@/lib/circle-api";
+
+import {
+  createCircle,
+  deleteCircle,
+  editCircle,
+  getMyCircles,
+  type Circle,
+} from "@/lib/circle-api";
 import { leaveCircle } from "@/lib/circle-member-api";
 
 export function PrivacyToggle({
@@ -79,6 +86,65 @@ export function CreateCircleModal({
   const [open, setOpen] =
     useState(false);
 
+  const [name, setName] =
+    useState("");
+
+  const [description, setDescription] =
+    useState("");
+
+  const [saving, setSaving] =
+    useState(false);
+  const [availableCircles, setAvailableCircles] =
+    useState<Circle[]>([]);
+
+  const [selectedCircleId, setSelectedCircleId] =
+    useState(circleId);
+
+  const [loadingCircles, setLoadingCircles] =
+    useState(false);
+
+  async function handleCreateCircle() {
+    if (!name.trim()) {
+      toast.error("Circle name is required");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await createCircle({
+        name: name.trim(),
+        description:
+          description.trim(),
+      });
+
+      toast.success(
+        "Circle created successfully",
+        {
+          description:
+            "Your private Circle has been created.",
+        },
+      );
+
+      setName("");
+      setDescription("");
+      setOpen(false);
+    } catch (error) {
+      console.error(
+        "Create Circle error:",
+        error,
+      );
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to create Circle",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -112,6 +178,10 @@ export function CreateCircleModal({
             <Input
               id="circle-name"
               placeholder="e.g. Project Nova"
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
             />
           </div>
 
@@ -125,6 +195,12 @@ export function CreateCircleModal({
               rows={3}
               placeholder="What is this Circle for?"
               className="resize-none"
+              value={description}
+              onChange={(event) =>
+                setDescription(
+                  event.target.value,
+                )
+              }
             />
           </div>
 
@@ -191,24 +267,21 @@ export function CreateCircleModal({
             onClick={() =>
               setOpen(false)
             }
+            disabled={saving}
           >
             Cancel
           </Button>
 
           <Button
-            onClick={() => {
-              setOpen(false);
-
-              toast.success(
-                "Circle created",
-                {
-                  description:
-                    "Member directory hidden by default",
-                },
-              );
-            }}
+            onClick={handleCreateCircle}
+            disabled={
+              saving ||
+              !name.trim()
+            }
           >
-            Create Circle
+            {saving
+              ? "Creating..."
+              : "Create Circle"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -245,8 +318,46 @@ export function ScheduleMeetingModal({
   return (
     <Dialog
       open={open}
-      onOpenChange={(v) => {
+      onOpenChange={async (v) => {
         setOpen(v);
+
+        if (v) {
+          try {
+            setLoadingCircles(true);
+
+            const result =
+              await getMyCircles();
+
+            setAvailableCircles(result);
+
+            const currentCircleExists =
+              result.some(
+                (circle) =>
+                  circle._id === circleId,
+              );
+
+            if (currentCircleExists) {
+              setSelectedCircleId(circleId);
+            } else if (result.length > 0) {
+              setSelectedCircleId(
+                result[0]._id,
+              );
+            }
+          } catch (error) {
+            console.error(
+              "Load Circles error:",
+              error,
+            );
+
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Failed to load Circles",
+            );
+          } finally {
+            setLoadingCircles(false);
+          }
+        }
 
         if (!v) {
           setTimeout(
@@ -390,31 +501,38 @@ export function ScheduleMeetingModal({
                 </Label>
 
                 <Select
-                  defaultValue={
-                    circles[0]!.id
+                  value={selectedCircleId}
+                  onValueChange={setSelectedCircleId}
+                  disabled={
+                    loadingCircles ||
+                    availableCircles.length === 0
                   }
                 >
                   <SelectTrigger
                     id="meeting-circle"
                     className="w-full"
                   >
-                    <SelectValue />
+                    <SelectValue
+                      placeholder={
+                        loadingCircles
+                          ? "Loading Circles..."
+                          : "Select a Circle"
+                      }
+                    />
                   </SelectTrigger>
 
                   <SelectContent>
-                    {circles.map((c) => (
+                    {availableCircles.map((circle) => (
                       <SelectItem
-                        key={c.id}
-                        value={c.id}
+                        key={circle._id}
+                        value={circle._id}
                       >
-                        {c.name}
+                        {circle.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
+              </div>              <div className="space-y-2">
                 <Label htmlFor="meeting-description">
                   Description
                 </Label>
@@ -507,7 +625,7 @@ export function ScheduleMeetingModal({
                     setSaving(true);
 
                     await createCircleMeeting(
-                      circleId,
+                      selectedCircleId,
                       {
                         title: title.trim(),
                         description:
@@ -569,6 +687,14 @@ export function ManageCircleModal({
 
   const [saving, setSaving] =
     useState(false);
+    const [availableCircles, setAvailableCircles] =
+  useState<Circle[]>([]);
+
+const [selectedCircleId, setSelectedCircleId] =
+  useState(circleId);
+
+const [loadingCircles, setLoadingCircles] =
+  useState(false);
 
   return (
     <Dialog>
@@ -696,7 +822,45 @@ export function ManageCircleModal({
             Leave Circle
           </Button>
         </div>
+        {/* Delete Circle */}
+        <div className="border-border border-t pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="text-destructive hover:text-destructive w-full"
+            onClick={async () => {
+              const confirmed =
+                window.confirm(
+                  "Are you sure you want to permanently delete this Circle? This action cannot be undone.",
+                );
 
+              if (!confirmed) {
+                return;
+              }
+
+              try {
+                await deleteCircle(
+                  circleId,
+                );
+
+                toast.success(
+                  "Circle deleted successfully.",
+                );
+
+                window.location.href =
+                  "/circles";
+              } catch (error) {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to delete Circle",
+                );
+              }
+            }}
+          >
+            Delete Circle
+          </Button>
+        </div>
         <DialogFooter>
           <Button
             asChild

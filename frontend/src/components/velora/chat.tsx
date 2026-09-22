@@ -647,7 +647,11 @@ export function MessageComposer({
 
       setValue("");
 
-      onMessageSent(data.data);
+      onMessageSent(
+        data.data ??
+        data.message ??
+        data,
+      );
 
       toast.success(
         "Message sent",

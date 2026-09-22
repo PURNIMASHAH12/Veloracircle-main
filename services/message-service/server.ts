@@ -10,6 +10,7 @@ import "./models/User";
 import path from "path";
 import messageRoutes from "./routes/MessageRoutes";
 import conversationRoutes from "./routes/ConversationRoutes";
+import circleConversationRoutes from "./routes/CircleConversationRoutes";
 
 import { registerReadReceiptSocket } from "./socket/ReadReceiptSocket";
 
@@ -43,6 +44,10 @@ app.use("/api/messages", messageRoutes);
 app.use(
   "/api/conversations",
   conversationRoutes,
+);
+app.use(
+  "/api/circle-conversations",
+  circleConversationRoutes,
 );
 
 app.get("/", (_req, res) => {

@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { Loader2, Shield, UserMinus, UserPlus } from "lucide-react";
+import {
+  Loader2,
+  Shield,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +22,13 @@ type CircleMemberManagerProps = {
   circleId: string;
 };
 
+type SearchUser = {
+  _id: string;
+  id?: string;
+  name: string;
+  email: string;
+};
+
 export function CircleMemberManager({
   circleId,
 }: CircleMemberManagerProps) {
@@ -25,6 +37,12 @@ export function CircleMemberManager({
 
   const [userId, setUserId] =
     useState("");
+
+  const [searchResults, setSearchResults] =
+    useState<SearchUser[]>([]);
+
+  const [searching, setSearching] =
+    useState(false);
 
   const [loading, setLoading] =
     useState(true);
@@ -58,9 +76,76 @@ export function CircleMemberManager({
     loadMembers();
   }, [circleId]);
 
-  const handleAddMember = async () => {
-    if (!userId.trim()) {
-      toast.error("Enter a user ID");
+  const searchUsers = async (
+    value: string,
+  ) => {
+    const query = value.trim();
+
+    setUserId(value);
+
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearching(true);
+
+      const token =
+        localStorage.getItem("token");
+
+      const response =
+        await fetch(
+          `/api/users/search?q=${encodeURIComponent(query)}`,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`,
+            },
+          },
+        );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to search users",
+        );
+      }
+
+      const results =
+        data.users ||
+        data.data ||
+        [];
+
+      setSearchResults(
+        Array.isArray(results)
+          ? results
+          : [],
+      );
+    } catch (error) {
+      console.error(
+        "Search users error:",
+        error,
+      );
+
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleAddMember = async (
+    selectedUserId?: string,
+  ) => {
+    const id =
+      selectedUserId ||
+      userId.trim();
+
+    if (!id) {
+      toast.error("Select a user");
       return;
     }
 
@@ -69,7 +154,7 @@ export function CircleMemberManager({
 
       await addCircleMember(
         circleId,
-        userId.trim(),
+        id,
       );
 
       toast.success(
@@ -77,6 +162,7 @@ export function CircleMemberManager({
       );
 
       setUserId("");
+      setSearchResults([]);
 
       await loadMembers();
     } catch (error) {
@@ -181,34 +267,118 @@ export function CircleMemberManager({
 
   return (
     <div className="space-y-5">
+      {/* Add member */}
       <div className="space-y-2">
         <p className="text-sm font-medium">
           Add member
         </p>
 
-        <div className="flex gap-2">
-          <Input
-            value={userId}
-            onChange={(event) =>
-              setUserId(event.target.value)
-            }
-            placeholder="Enter user ID"
-          />
+        <div className="relative">
+          <div className="flex gap-2">
+            <Input
+              value={userId}
+              onChange={(event) =>
+                void searchUsers(
+                  event.target.value,
+                )
+              }
+              placeholder="Search by name or email"
+            />
 
-          <Button
-            onClick={handleAddMember}
-            disabled={adding}
-          >
-            {adding ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <UserPlus className="h-4 w-4" />
+            <Button
+              onClick={() =>
+                void handleAddMember()
+              }
+              disabled={
+                adding ||
+                !userId.trim()
+              }
+            >
+              {adding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4" />
+              )}
+
+              Add
+            </Button>
+          </div>
+
+          {/* Search results */}
+          {userId.trim() &&
+            (searching ||
+              searchResults.length > 0) && (
+              <div className="border-border bg-background absolute z-50 mt-2 w-full overflow-hidden rounded-xl border shadow-lg">
+                {searching ? (
+                  <div className="text-muted-foreground flex items-center gap-2 p-3 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Searching users...
+                  </div>
+                ) : (
+                  <div className="max-h-52 overflow-y-auto">
+                    {searchResults.map(
+                      (user) => {
+                        const actualUserId =
+                          user._id ||
+                          user.id ||
+                          "";
+
+                        const alreadyMember =
+                          members.some(
+                            (member) =>
+                              member._id ===
+                              actualUserId,
+                          );
+
+                        return (
+                          <div
+                            key={
+                              actualUserId
+                            }
+                            className="hover:bg-surface-2 flex items-center justify-between gap-3 p-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {user.name}
+                              </p>
+
+                              <p className="text-muted-foreground truncate text-xs">
+                                {user.email}
+                              </p>
+                            </div>
+
+                            {alreadyMember ? (
+                              <span className="text-muted-foreground shrink-0 text-xs">
+                                Already added
+                              </span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                disabled={
+                                  adding
+                                }
+                                onClick={() =>
+                                  void handleAddMember(
+                                    actualUserId,
+                                  )
+                                }
+                              >
+                                <UserPlus className="mr-1 h-4 w-4" />
+                                Add
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+                )}
+              </div>
             )}
-            Add
-          </Button>
         </div>
       </div>
 
+      {/* Circle members */}
       <div className="space-y-2">
         <p className="text-sm font-medium">
           Circle members
@@ -222,7 +392,8 @@ export function CircleMemberManager({
           <div className="space-y-2">
             {members.map((member) => {
               const isProcessing =
-                actionUserId === member._id;
+                actionUserId ===
+                member._id;
 
               return (
                 <div
@@ -243,9 +414,11 @@ export function CircleMemberManager({
                     <Button
                       variant="ghost"
                       size="icon"
-                      disabled={isProcessing}
+                      disabled={
+                        isProcessing
+                      }
                       onClick={() =>
-                        handlePromote(
+                        void handlePromote(
                           member._id,
                         )
                       }
@@ -257,9 +430,11 @@ export function CircleMemberManager({
                     <Button
                       variant="ghost"
                       size="icon"
-                      disabled={isProcessing}
+                      disabled={
+                        isProcessing
+                      }
                       onClick={() =>
-                        handleDemote(
+                        void handleDemote(
                           member._id,
                         )
                       }
@@ -271,9 +446,11 @@ export function CircleMemberManager({
                     <Button
                       variant="ghost"
                       size="icon"
-                      disabled={isProcessing}
+                      disabled={
+                        isProcessing
+                      }
                       onClick={() =>
-                        handleRemoveMember(
+                        void handleRemoveMember(
                           member._id,
                         )
                       }
