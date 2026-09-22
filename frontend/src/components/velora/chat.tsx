@@ -102,8 +102,10 @@ export function ConversationItem({
 
 function MessageActions({
   onDelete,
+  onSave,
 }: {
   onDelete?: () => void;
+  onSave?: () => void;
 }) {
   const act = (label: string) => {
     toast(label, {
@@ -158,9 +160,11 @@ function MessageActions({
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          onSelect={() =>
-            act("Saved")
-          }
+          onSelect={() => {
+            if (onSave) {
+              onSave();
+            }
+          }}
         >
           <Bookmark className="h-4 w-4" />
           Save
@@ -198,6 +202,7 @@ function MessageActions({
 export function MessageBubble({
   message,
   onDelete,
+  onSave,
 }: {
   message: {
     id: string;
@@ -223,14 +228,15 @@ export function MessageBubble({
     }[];
   };
   onDelete?: () => void;
+  onSave?: () => void;
 }) {
   const self = message.self;
 
-console.log(
-  "BUBBLE VOICE CHECK:",
-  message.kind,
-  message.file,
-);
+  console.log(
+    "BUBBLE VOICE CHECK:",
+    message.kind,
+    message.file,
+  );
 
   const [showFileMenu, setShowFileMenu] =
     useState(false);
@@ -322,9 +328,16 @@ console.log(
               {...(onDelete
                 ? { onDelete }
                 : {})}
+              {...(onSave
+                ? { onSave }
+                : {})}
             />
           ) : (
-            <MessageActions />
+            <MessageActions
+              {...(onSave
+                ? { onSave }
+                : {})}
+            />
           )}
         </div>
 
@@ -508,15 +521,15 @@ console.log(
             </div>
           ) : null}
 
-       {message.kind === "voice" ? (
-  <audio
-    controls
-    src={message.file?.url || ""}
-    className="h-9 max-w-[260px]"
-  />
-) : (
-  message.body
-)}
+          {message.kind === "voice" ? (
+            <audio
+              controls
+              src={message.file?.url || ""}
+              className="h-9 max-w-[260px]"
+            />
+          ) : (
+            message.body
+          )}
         </div>
 
         <div className="text-muted-foreground mt-1 flex items-center text-[11px]">

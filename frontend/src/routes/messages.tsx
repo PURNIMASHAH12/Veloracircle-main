@@ -184,12 +184,12 @@ function MessagesPage() {
     setBackendMessages,
   });
 
- const {
-  markMessagesAsRead,
-  markIfNeeded,
-} = useMarkMessagesAsRead({
-  activeId,
-});
+  const {
+    markMessagesAsRead,
+    markIfNeeded,
+  } = useMarkMessagesAsRead({
+    activeId,
+  });
 
   useRealtimeMessages({
     activeId,
@@ -348,12 +348,12 @@ function MessagesPage() {
 
           const currentUser =
             typeof window !==
-            "undefined"
+              "undefined"
               ? JSON.parse(
-                  localStorage.getItem(
-                    "user",
-                  ) || "{}",
-                )
+                localStorage.getItem(
+                  "user",
+                ) || "{}",
+              )
               : {};
 
           const currentUserId =
@@ -373,15 +373,15 @@ function MessagesPage() {
                     conversation,
                   ) =>
                     conversation.id ===
-                    activeId
+                      activeId
                       ? {
-                          ...conversation,
-                          unreadCount: 0,
-                        }
+                        ...conversation,
+                        unreadCount: 0,
+                      }
                       : conversation,
                 ),
             );
-             markIfNeeded();
+            markIfNeeded();
           }
         } catch (error) {
           console.error(
@@ -516,21 +516,21 @@ function MessagesPage() {
         previous.map(
           (conversation) =>
             conversation.id ===
-            activeId
+              activeId
               ? {
-                  ...conversation,
-                  latestMessage: {
-                    text:
-                      latestMessage.text ??
-                      "",
-                    createdAt:
-                      latestMessage.createdAt,
-                    sender:
-                      latestMessage
-                        .sender?._id ??
-                      "",
-                  },
-                }
+                ...conversation,
+                latestMessage: {
+                  text:
+                    latestMessage.text ??
+                    "",
+                  createdAt:
+                    latestMessage.createdAt,
+                  sender:
+                    latestMessage
+                      .sender?._id ??
+                    "",
+                },
+              }
               : conversation,
         ),
     );
@@ -621,10 +621,10 @@ function MessagesPage() {
   const currentUser =
     typeof window !== "undefined"
       ? JSON.parse(
-          localStorage.getItem(
-            "user",
-          ) || "{}",
-        )
+        localStorage.getItem(
+          "user",
+        ) || "{}",
+      )
       : {};
 
   const currentUserName =
@@ -728,7 +728,7 @@ function MessagesPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-              "Failed to create conversation",
+            "Failed to create conversation",
           );
         }
 
@@ -825,7 +825,7 @@ function MessagesPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to update pin",
+          "Failed to update pin",
         );
       }
 
@@ -834,11 +834,11 @@ function MessagesPage() {
           previous.map(
             (conversation) =>
               conversation.id ===
-              conversationId
+                conversationId
                 ? {
-                    ...conversation,
-                    pinned: data.pinned,
-                  }
+                  ...conversation,
+                  pinned: data.pinned,
+                }
                 : conversation,
           ),
       );
@@ -901,7 +901,7 @@ function MessagesPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-              "Failed to delete conversation",
+            "Failed to delete conversation",
           );
         }
 
@@ -980,7 +980,7 @@ function MessagesPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to delete message",
+          "Failed to delete message",
         );
       }
 
@@ -1009,7 +1009,68 @@ function MessagesPage() {
       );
     }
   };
+  const saveMessage = async (
+    message: BackendMessage,
+  ) => {
+    const token =
+      localStorage.getItem("token");
 
+    if (!token) {
+      toast.error(
+        "Authentication required",
+      );
+      return;
+    }
+
+    try {
+      const endpoint =
+        message.type === "file"
+          ? "/api/messages/saved/file"
+          : "/api/messages/saved/message";
+
+      const response = await fetch(
+        endpoint,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            messageId: message._id,
+          }),
+        },
+      );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+          "Failed to save message",
+        );
+      }
+
+      toast.success(
+        message.type === "file"
+          ? "File saved"
+          : "Message saved",
+      );
+    } catch (error) {
+      console.error(
+        "Save message error:",
+        error,
+      );
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to save message",
+      );
+    }
+  };
   /* =====================================================
      RENDER
   ===================================================== */
@@ -1026,7 +1087,7 @@ function MessagesPage() {
           className={cn(
             "border-border flex h-full min-h-0 w-full flex-col overflow-hidden border-r md:w-[320px] md:shrink-0",
             mobileOpen &&
-              "hidden md:flex",
+            "hidden md:flex",
           )}
         >
           <div className="space-y-3 p-3 shrink-0">
@@ -1133,9 +1194,9 @@ function MessagesPage() {
                       ) => {
                         if (
                           event.key ===
-                            "Enter" ||
+                          "Enter" ||
                           event.key ===
-                            " "
+                          " "
                         ) {
                           setActiveId(
                             conversation.id,
@@ -1149,8 +1210,8 @@ function MessagesPage() {
                       className={cn(
                         "hover:bg-muted/50 flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left transition-colors",
                         conversation.id ===
-                          activeId &&
-                          "bg-muted",
+                        activeId &&
+                        "bg-muted",
                       )}
                     >
                       <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
@@ -1172,10 +1233,10 @@ function MessagesPage() {
                           </p>
 
                           {conversation.unreadCount >
-                          0 ? (
+                            0 ? (
                             <span className="bg-primary text-primary-foreground flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold">
                               {conversation.unreadCount >
-                              99
+                                99
                                 ? "99+"
                                 : conversation.unreadCount}
                             </span>
@@ -1254,7 +1315,7 @@ function MessagesPage() {
           className={cn(
             "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
             !mobileOpen &&
-              "hidden md:flex",
+            "hidden md:flex",
           )}
         >
           <header className="border-border bg-background/70 grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-3 py-2.5 backdrop-blur-xl sm:px-4">
@@ -1504,11 +1565,11 @@ function MessagesPage() {
                         body:
                           message.type ===
                             "file" ||
-                          message.type ===
+                            message.type ===
                             "voice"
                             ? ""
                             : message.text ??
-                              "",
+                            "",
 
                         time: new Date(
                           message.createdAt,
@@ -1523,12 +1584,12 @@ function MessagesPage() {
 
                         initials: isSelf
                           ? currentUser.name
-                              ?.slice(
-                                0,
-                                2,
-                              )
-                              .toUpperCase() ||
-                            "ME"
+                            ?.slice(
+                              0,
+                              2,
+                            )
+                            .toUpperCase() ||
+                          "ME"
                           : activeInitials,
 
                         self: isSelf,
@@ -1539,10 +1600,10 @@ function MessagesPage() {
                            kind is now INSIDE message */
                         kind:
                           message.type ===
-                          "voice"
+                            "voice"
                             ? "voice"
                             : message.type ===
-                                "file"
+                              "file"
                               ? "file"
                               : "text",
 
@@ -1550,40 +1611,43 @@ function MessagesPage() {
                            file is now INSIDE message */
                         ...(message.file
                           ? {
-                              file: {
-                                name:
-                                  message
-                                    .file
-                                    .name,
+                            file: {
+                              name:
+                                message
+                                  .file
+                                  .name,
 
-                                size: `${(
-                                  message
-                                    .file
-                                    .size /
-                                  1024
-                                ).toFixed(
-                                  1,
-                                )} KB`,
+                              size: `${(
+                                message
+                                  .file
+                                  .size /
+                                1024
+                              ).toFixed(
+                                1,
+                              )} KB`,
 
-                                url:
-                                  message
-                                    .file
-                                    .url,
-                              },
-                            }
+                              url:
+                                message
+                                  .file
+                                  .url,
+                            },
+                          }
                           : {}),
                       }}
 
                       {...(isSelf
                         ? {
-                            onDelete:
-                              () => {
-                                deleteMessage(
-                                  message._id,
-                                );
-                              },
-                          }
+                          onDelete:
+                            () => {
+                              deleteMessage(
+                                message._id,
+                              );
+                            },
+                        }
                         : {})}
+                      onSave={() => {
+                        void saveMessage(message);
+                      }}
                     />
                   );
                 },
@@ -1634,24 +1698,24 @@ function MessagesPage() {
                           conversation,
                         ) =>
                           conversation.id ===
-                          activeId
+                            activeId
                             ? {
-                                ...conversation,
-                                latestMessage:
-                                  {
-                                    text:
-                                      message.text ??
-                                      "",
-                                    createdAt:
-                                      message.createdAt ??
-                                      new Date().toISOString(),
-                                    sender:
-                                      message
-                                        .sender
-                                        ?._id ??
-                                      "",
-                                  },
-                              }
+                              ...conversation,
+                              latestMessage:
+                              {
+                                text:
+                                  message.text ??
+                                  "",
+                                createdAt:
+                                  message.createdAt ??
+                                  new Date().toISOString(),
+                                sender:
+                                  message
+                                    .sender
+                                    ?._id ??
+                                  "",
+                              },
+                            }
                             : conversation,
                       )
                       .sort(
@@ -1660,13 +1724,13 @@ function MessagesPage() {
                             b
                               .latestMessage
                               ?.createdAt ||
-                              0,
+                            0,
                           ).getTime() -
                           new Date(
                             a
                               .latestMessage
                               ?.createdAt ||
-                              0,
+                            0,
                           ).getTime(),
                       ),
                 );
@@ -1763,7 +1827,7 @@ function MessagesPage() {
                 )}
 
                 {userSearch &&
-                searchResults.length ===
+                  searchResults.length ===
                   0 ? (
                   <p className="text-muted-foreground py-4 text-center text-sm">
                     No users found.
@@ -1776,7 +1840,7 @@ function MessagesPage() {
       </div>
 
       {callState.status ===
-      "ringing" ? (
+        "ringing" ? (
         <IncomingCall
           callState={callState}
           onAccept={() => {
@@ -1788,7 +1852,7 @@ function MessagesPage() {
 
       {callState.status !==
         "idle" &&
-      callState.status !==
+        callState.status !==
         "ended" ? (
         <CallScreen
           callState={callState}

@@ -1,6 +1,7 @@
 import express from "express";
 import {
   saveFile,
+  saveMessage,
   getSavedItems,
   removeSavedItem,
 } from "../controllers/SavedController";
@@ -55,6 +56,10 @@ router.get(
 router.post(
   "/saved/file",
   saveFile,
+);
+router.post(
+  "/saved/message",
+  saveMessage,
 );
 
 router.get(

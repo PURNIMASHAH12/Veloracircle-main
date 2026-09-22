@@ -6,7 +6,10 @@ import mongoose from "mongoose";
 import "./models/User";
 
 import circleRoutes from "./routes/CircleRoutes";
-
+import circleEditRoutes from "./routes/CircleEditRoutes";
+import circleLeaveRoutes from "./routes/CircleLeaveRoutes";
+import circleAdminRoutes from "./routes/CircleAdminRoutes";
+import circleMeetingRoutes from "./routes/CircleMeetingRoutes";
 dotenv.config();
 
 const app = express();
@@ -35,6 +38,22 @@ app.get("/", (_req, res) => {
 app.use(
   "/api/circles",
   circleRoutes,
+);
+app.use(
+  "/api/circles",
+  circleEditRoutes,
+);
+app.use(
+  "/api/circles",
+  circleLeaveRoutes,
+);
+app.use(
+  "/api/circles",
+  circleAdminRoutes,
+);
+app.use(
+  "/api/circles",
+  circleMeetingRoutes,
 );
 
 if (!MONGO_URI) {

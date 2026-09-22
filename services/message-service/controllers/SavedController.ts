@@ -330,3 +330,121 @@ export const removeSavedItem =
             });
         }
     };
+    export const saveMessage = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = getUserFromToken(req);
+
+    if (!user) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const { messageId } = req.body;
+
+    if (!messageId) {
+      res.status(400).json({
+        message: "Message ID is required",
+      });
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      res.status(400).json({
+        message: "Invalid message ID",
+      });
+      return;
+    }
+
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      res.status(404).json({
+        message: "Message not found",
+      });
+      return;
+    }
+
+    const conversation =
+      await Conversation.findById(
+        message.conversation,
+      );
+
+    if (!conversation) {
+      res.status(404).json({
+        message: "Conversation not found",
+      });
+      return;
+    }
+
+    const isParticipant =
+      conversation.participants.some(
+        (participant) =>
+          participant.toString() === user.id,
+      );
+
+    if (!isParticipant) {
+      res.status(403).json({
+        message: "Access denied",
+      });
+      return;
+    }
+
+    const existingSave =
+      await SavedItem.findOne({
+        user: user.id,
+        message: message._id,
+      });
+
+    if (existingSave) {
+      res.status(200).json({
+        message: "Already saved",
+        savedItem: existingSave,
+      });
+      return;
+    }
+
+    const urlMatch =
+      message.text?.match(
+        /https?:\/\/[^\s]+/i,
+      );
+
+    let savedItem;
+
+    if (urlMatch) {
+      savedItem = await SavedItem.create({
+        user: user.id,
+        type: "link",
+        message: message._id,
+        link: {
+          url: urlMatch[0],
+          title: message.text,
+        },
+      });
+    } else {
+      savedItem = await SavedItem.create({
+        user: user.id,
+        type: "message",
+        message: message._id,
+      });
+    }
+
+    res.status(201).json({
+      message: "Message saved successfully",
+      savedItem,
+    });
+  } catch (error) {
+    console.error(
+      "Save message error:",
+      error,
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};

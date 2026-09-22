@@ -18,10 +18,6 @@ import { AppShell } from "@/components/velora/app-shell";
 import { FileRow } from "@/components/velora/cards";
 import { EmptyState } from "@/components/velora/primitives";
 import type { FileItem } from "@/lib/mock-data";
-import {
-  savedLinks,
-  savedMessages,
-} from "@/lib/mock-data";
 
 export const Route = createFileRoute("/saved")({
   head: () => ({
@@ -38,8 +34,7 @@ export const Route = createFileRoute("/saved")({
       },
       {
         property: "og:description",
-        content:
-          "Everything you kept, privately.",
+        content: "Everything you kept, privately.",
       },
     ],
   }),
@@ -50,11 +45,20 @@ export const Route = createFileRoute("/saved")({
    TYPES
 ===================================================== */
 
-type SavedFile = {
-  id: string;
+type SavedItem = {
+  _id: string;
+
+  type: "message" | "file" | "link";
 
   message?: {
     _id: string;
+    text?: string;
+    type?: string;
+    createdAt?: string;
+    sender?: {
+      _id?: string;
+      name?: string;
+    };
   };
 
   file?: {
@@ -62,6 +66,11 @@ type SavedFile = {
     url: string;
     size?: number;
     mimeType?: string;
+  };
+
+  link?: {
+    url: string;
+    title?: string;
   };
 
   createdAt: string;
@@ -123,23 +132,23 @@ const getFileType = (
 ===================================================== */
 
 function SavedPage() {
-  const [savedFiles, setSavedFiles] =
-    useState<SavedFile[]>([]);
+  const [savedItems, setSavedItems] =
+    useState<SavedItem[]>([]);
 
-  const [loadingFiles, setLoadingFiles] =
+  const [loading, setLoading] =
     useState(true);
 
   /* =====================================================
-     LOAD SAVED FILES
+     LOAD ALL SAVED ITEMS
   ===================================================== */
 
   useEffect(() => {
-    const loadSavedFiles = async () => {
+    const loadSavedItems = async () => {
       const token =
         localStorage.getItem("token");
 
       if (!token) {
-        setLoadingFiles(false);
+        setLoading(false);
         return;
       }
 
@@ -159,37 +168,59 @@ function SavedPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-              "Failed to load saved files",
+              "Failed to load saved items",
           );
         }
 
-        const filesOnly =
+        setSavedItems(
           Array.isArray(data.savedItems)
-            ? data.savedItems.filter(
-                (item: SavedFile) =>
-                  Boolean(item.file),
-              )
-            : [];
-
-        setSavedFiles(filesOnly);
+            ? data.savedItems
+            : Array.isArray(data.data)
+              ? data.data
+              : [],
+        );
       } catch (error) {
         console.error(
-          "Failed to load saved files:",
+          "Failed to load saved items:",
           error,
         );
 
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to load saved files",
+            : "Failed to load saved items",
         );
       } finally {
-        setLoadingFiles(false);
+        setLoading(false);
       }
     };
 
-    void loadSavedFiles();
+    void loadSavedItems();
   }, []);
+
+  /* =====================================================
+     FILTER SAVED ITEMS
+  ===================================================== */
+
+  const savedMessages =
+    savedItems.filter(
+      (item) =>
+        item.type === "message",
+    );
+
+  const savedFiles =
+    savedItems.filter(
+      (item) =>
+        item.type === "file" ||
+        Boolean(item.file),
+    );
+
+  const savedLinks =
+    savedItems.filter(
+      (item) =>
+        item.type === "link" ||
+        Boolean(item.link),
+    );
 
   /* =====================================================
      FORMAT SAVED FILES
@@ -198,16 +229,15 @@ function SavedPage() {
   const displayFiles: FileItem[] =
     savedFiles
       .filter(
-        (saved) => Boolean(saved.file),
+        (saved) =>
+          Boolean(saved.file),
       )
       .map((saved) => {
         const file =
           saved.file!;
 
         return {
-          id:
-            saved.message?._id ||
-            saved.id,
+          id: saved._id,
 
           name: file.name,
 
@@ -243,10 +273,10 @@ function SavedPage() {
       });
 
   /* =====================================================
-     REMOVE SAVED FILE
+     REMOVE SAVED ITEM
   ===================================================== */
 
-  const handleRemoveSavedFile =
+  const handleRemoveSavedItem =
     async (savedItemId: string) => {
       const token =
         localStorage.getItem("token");
@@ -276,15 +306,15 @@ function SavedPage() {
         if (!response.ok) {
           throw new Error(
             data.message ||
-              "Failed to remove saved file",
+              "Failed to remove saved item",
           );
         }
 
-        setSavedFiles(
-          (currentFiles) =>
-            currentFiles.filter(
+        setSavedItems(
+          (currentItems) =>
+            currentItems.filter(
               (item) =>
-                item.id !==
+                item._id !==
                 savedItemId,
             ),
         );
@@ -294,14 +324,14 @@ function SavedPage() {
         );
       } catch (error) {
         console.error(
-          "Remove saved file error:",
+          "Remove saved item error:",
           error,
         );
 
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to remove saved file",
+            : "Failed to remove saved item",
         );
       }
     };
@@ -347,39 +377,60 @@ function SavedPage() {
             value="messages"
             className="mt-5 space-y-3"
           >
-            {savedMessages.map((s) => (
-              <article
-                key={s.id}
-                className="surface-panel rounded-2xl p-4"
-              >
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-                  <span className="bg-primary/10 text-primary grid h-9 w-9 place-items-center rounded-xl">
-                    <MessageSquare
-                      className="h-4 w-4"
-                      aria-hidden
-                    />
-                  </span>
+            {loading ? (
+              <div className="text-muted-foreground py-10 text-center text-sm">
+                Loading saved messages...
+              </div>
+            ) : savedMessages.length ? (
+              savedMessages.map(
+                (item) => (
+                  <article
+                    key={item._id}
+                    className="surface-panel rounded-2xl p-4"
+                  >
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                      <span className="bg-primary/10 text-primary grid h-9 w-9 place-items-center rounded-xl">
+                        <MessageSquare
+                          className="h-4 w-4"
+                          aria-hidden
+                        />
+                      </span>
 
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium">
-                      {s.from}
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-medium">
+                          {item.message
+                            ?.sender
+                            ?.name ||
+                            "Saved message"}
+                        </p>
+
+                        <p className="text-muted-foreground truncate text-[11px]">
+                          Saved from conversation
+                        </p>
+                      </div>
+
+                      <span className="text-muted-foreground text-[11px]">
+                        {new Date(
+                          item.createdAt,
+                        ).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <p className="text-foreground/85 mt-3 text-[13px] leading-relaxed">
+                      {item.message
+                        ?.text ||
+                        "Message content unavailable"}
                     </p>
-
-                    <p className="text-muted-foreground truncate text-[11px]">
-                      {s.circle}
-                    </p>
-                  </div>
-
-                  <span className="text-muted-foreground text-[11px]">
-                    {s.time}
-                  </span>
-                </div>
-
-                <p className="text-foreground/85 mt-3 text-[13px] leading-relaxed">
-                  {s.body}
-                </p>
-              </article>
-            ))}
+                  </article>
+                ),
+              )
+            ) : (
+              <EmptyState
+                icon={MessageSquare}
+                title="No saved messages"
+                description="Messages you save from your chats will appear here."
+              />
+            )}
           </TabsContent>
 
           {/* =================================================
@@ -390,7 +441,7 @@ function SavedPage() {
             value="files"
             className="mt-5"
           >
-            {loadingFiles ? (
+            {loading ? (
               <div className="text-muted-foreground py-10 text-center text-sm">
                 Loading saved files...
               </div>
@@ -422,45 +473,59 @@ function SavedPage() {
             value="links"
             className="mt-5 space-y-3"
           >
-            {savedLinks.length ? (
-              savedLinks.map((l) => (
-                <div
-                  key={l.id}
-                  className="surface-panel grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl p-4"
-                >
-                  <span className="bg-primary/10 text-primary grid h-9 w-9 place-items-center rounded-xl">
-                    <ExternalLink
-                      className="h-4 w-4"
-                      aria-hidden
-                    />
-                  </span>
+            {loading ? (
+              <div className="text-muted-foreground py-10 text-center text-sm">
+                Loading saved links...
+              </div>
+            ) : savedLinks.length ? (
+              savedLinks.map(
+                (item) => (
+                  <div
+                    key={item._id}
+                    className="surface-panel grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl p-4"
+                  >
+                    <span className="bg-primary/10 text-primary grid h-9 w-9 place-items-center rounded-xl">
+                      <ExternalLink
+                        className="h-4 w-4"
+                        aria-hidden
+                      />
+                    </span>
 
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium">
-                      {l.title}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium">
+                        {item.link
+                          ?.title ||
+                          item.link
+                            ?.url ||
+                          "Saved link"}
+                      </p>
 
-                    <p className="text-muted-foreground truncate text-[11px]">
-                      {l.url}
-                    </p>
+                      <p className="text-muted-foreground truncate text-[11px]">
+                        {item.link?.url}
+                      </p>
+                    </div>
+
+                    <span className="text-muted-foreground text-[11px]">
+                      {new Date(
+                        item.createdAt,
+                      ).toLocaleDateString()}
+                    </span>
                   </div>
-
-                  <span className="text-muted-foreground text-[11px]">
-                    {l.time}
-                  </span>
-                </div>
-              ))
+                ),
+              )
             ) : (
               <EmptyState
                 icon={Bookmark}
-                title="No saved items"
-                description="Save important messages, files, and links here."
+                title="No saved links"
+                description="Links you save from your chats will appear here."
               />
             )}
           </TabsContent>
         </Tabs>
 
-        {/* ARCHIVE */}
+        {/* =================================================
+            ARCHIVE
+        ================================================= */}
 
         <div className="mt-10">
           <EmptyState
