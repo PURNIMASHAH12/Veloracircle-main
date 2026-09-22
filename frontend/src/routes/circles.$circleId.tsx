@@ -1,13 +1,25 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useParams,
+} from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { getCircle, type Circle } from "@/lib/circle-api";
 import { ArrowLeft, EyeOff, MoreHorizontal, Pin, Search, Settings2, Video } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/velora/app-shell";
 import { MessageBubble, MessageComposer } from "@/components/velora/chat";
-import { ManageCircleModal } from "@/components/velora/modals";
+import {
+  ManageCircleModal,
+  ScheduleMeetingModal,
+} from "@/components/velora/modals";
 import { IconButton, PrivacyBadge } from "@/components/velora/primitives";
-import { circles, currentUser, messageThread } from "@/lib/mock-data";
-
+import { currentUser, messageThread } from "@/lib/mock-data";
+import {
+  getCircleMeetings,
+  type CircleMeeting,
+} from "@/lib/circle-meeting-api";
 export const Route = createFileRoute("/circles/$circleId")({
   head: () => ({
     meta: [
@@ -29,8 +41,45 @@ export const Route = createFileRoute("/circles/$circleId")({
 
 function CirclePage() {
   const { circleId } = useParams({ from: "/circles/$circleId" });
-  const circle = circles.find((c) => c.id === circleId) ?? circles[0]!;
-  const isAdmin = currentUser.role === "admin" || currentUser.role === "owner";
+  const [circle, setCircle] =
+    useState<Circle | null>(null);
+  const [meetings, setMeetings] =
+    useState<CircleMeeting[]>([]);
+  useEffect(() => {
+    getCircle(circleId)
+      .then(setCircle)
+      .catch((error) => {
+        console.error(
+          "Failed to load Circle:",
+          error,
+        );
+      });
+  }, [circleId]);
+  useEffect(() => {
+    getCircleMeetings(circleId)
+      .then(setMeetings)
+      .catch((error) => {
+        console.error(
+          "Failed to load Circle meetings:",
+          error,
+        );
+      });
+  }, [circleId]);
+
+  if (!circle) {
+    return (
+      <AppShell>
+        <div className="flex h-full items-center justify-center">
+          <p className="text-muted-foreground text-sm">
+            Loading Circle...
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
+  const isAdmin =
+    currentUser.role === "admin" ||
+    currentUser.role === "owner";
 
   return (
     <AppShell
@@ -46,7 +95,60 @@ function CirclePage() {
               Private space. Messages are visible only to authorized participants.
             </p>
           </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold">
+                  Circle Meetings
+                </h2>
 
+                <p className="text-muted-foreground text-xs">
+                  Scheduled meetings for this Circle
+                </p>
+              </div>
+            </div>
+
+            {meetings.length === 0 ? (
+              <div className="border-border rounded-xl border p-4">
+                <p className="text-muted-foreground text-sm">
+                  No meetings scheduled.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {meetings.map((meeting) => (
+                  <div
+                    key={meeting._id}
+                    className="border-border rounded-xl border p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium">
+                          {meeting.title}
+                        </p>
+
+                        {meeting.description && (
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            {meeting.description}
+                          </p>
+                        )}
+
+                        <p className="text-muted-foreground mt-2 text-xs">
+                          {new Date(
+                            meeting.scheduledAt,
+                          ).toLocaleString()}
+                        </p>
+                      </div>
+
+                      <span className="text-xs capitalize">
+                        {meeting.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="surface-panel rounded-2xl p-4">
             <h2 className="text-sm font-semibold">Permissions</h2>
             <ul className="mt-3 space-y-2">
@@ -63,6 +165,8 @@ function CirclePage() {
 
           {isAdmin && (
             <ManageCircleModal
+              circleId={circleId}
+              circleName={circle.name}
               trigger={
                 <Button variant="outline" className="w-full">
                   <Settings2 className="h-4 w-4" /> Manage Circle
@@ -89,7 +193,15 @@ function CirclePage() {
           <div className="flex shrink-0 items-center gap-1">
             <PrivacyBadge label="Private Circle" tone="accent" className="hidden sm:inline-flex" />
             <IconButton icon={Search} label="Search in Circle" />
-            <IconButton icon={Video} label="Start Circle meeting" />
+            <ScheduleMeetingModal
+              circleId={circleId}
+              trigger={
+                <IconButton
+                  icon={Video}
+                  label="Start Circle meeting"
+                />
+              }
+            />
             <IconButton icon={MoreHorizontal} label="More options" />
           </div>
         </header>
@@ -108,12 +220,56 @@ function CirclePage() {
           </div>
 
           {messageThread.map((m) => (
-            <MessageBubble key={m.id} message={m} />
+            <MessageBubble
+              key={m.id}
+              message={{
+                id: m.id,
+                author: m.author,
+                body: m.body ?? "",
+                time: m.time,
+                initials: m.initials,
+                self: m.self ?? false,
+
+                ...(m.kind
+                  ? {
+                    kind:
+                      m.kind === "image"
+                        ? "file"
+                        : m.kind,
+                  }
+                  : {}),
+
+                ...(m.file
+                  ? {
+                    file: {
+                      ...m.file,
+                      url: "",
+                    },
+                  }
+                  : {}),
+
+                ...(m.replyTo
+                  ? {
+                    replyTo: m.replyTo,
+                  }
+                  : {}),
+
+                ...(m.reactions
+                  ? {
+                    reactions: m.reactions,
+                  }
+                  : {}),
+              }}
+            />
           ))}
         </div>
 
         <div className="pb-16 lg:pb-0">
-          <MessageComposer placeholder={`Message ${circle.name}…`} />
+          <MessageComposer
+            placeholder={`Message ${circle.name}…`}
+            conversationId={circleId}
+            onMessageSent={() => { }}
+          />
         </div>
       </div>
     </AppShell>

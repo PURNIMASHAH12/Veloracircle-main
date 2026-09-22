@@ -10,6 +10,7 @@ import circleEditRoutes from "./routes/CircleEditRoutes";
 import circleLeaveRoutes from "./routes/CircleLeaveRoutes";
 import circleAdminRoutes from "./routes/CircleAdminRoutes";
 import circleMeetingRoutes from "./routes/CircleMeetingRoutes";
+import startCircleMeetingReminderScheduler from "./services/CircleMeetingReminderScheduler";
 dotenv.config();
 
 const app = express();
@@ -74,6 +75,7 @@ mongoose
       console.log(
         `Circle Service running on port ${PORT}`,
       );
+      startCircleMeetingReminderScheduler();
     });
   })
   .catch((error) => {

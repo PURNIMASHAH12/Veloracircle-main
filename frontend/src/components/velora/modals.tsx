@@ -1,8 +1,16 @@
-import { CheckCircle2, Lock, ShieldCheck, Users } from "lucide-react";
+import {
+  CheckCircle2,
+  Lock,
+  LogOut,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { CircleMemberManager } from "@/components/velora/CircleMemberManager";
 import { Button } from "@/components/ui/button";
+import { createCircleMeeting } from "@/lib/circle-meeting-api";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +32,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { circles } from "@/lib/mock-data";
+import { editCircle } from "@/lib/circle-api";
+import { leaveCircle } from "@/lib/circle-member-api";
 
 export function PrivacyToggle({
   label,
@@ -35,32 +45,59 @@ export function PrivacyToggle({
   defaultChecked?: boolean;
 }) {
   const id = label.replace(/\s+/g, "-").toLowerCase();
+
   return (
     <div className="border-border bg-surface-2/40 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border px-4 py-3">
       <div className="min-w-0">
-        <Label htmlFor={id} className="text-[13px] font-medium">
+        <Label
+          htmlFor={id}
+          className="text-[13px] font-medium"
+        >
           {label}
         </Label>
+
         {description && (
-          <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">{description}</p>
+          <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
+            {description}
+          </p>
         )}
       </div>
-      <Switch id={id} defaultChecked={defaultChecked} />
+
+      <Switch
+        id={id}
+        defaultChecked={defaultChecked}
+      />
     </div>
   );
 }
 
-export function CreateCircleModal({ trigger }: { trigger: ReactNode }) {
-  const [open, setOpen] = useState(false);
+export function CreateCircleModal({
+  trigger,
+}: {
+  trigger: ReactNode;
+}) {
+  const [open, setOpen] =
+    useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+
       <DialogContent className="glass max-h-[90dvh] overflow-y-auto sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Lock className="text-primary h-4 w-4" aria-hidden /> Create a Private Circle
+            <Lock
+              className="text-primary h-4 w-4"
+              aria-hidden
+            />
+            Create a Private Circle
           </DialogTitle>
+
           <DialogDescription>
             Circles are private by default. Visibility settings can be tightened at any time.
           </DialogDescription>
@@ -68,11 +105,21 @@ export function CreateCircleModal({ trigger }: { trigger: ReactNode }) {
 
         <div className="space-y-4 py-1">
           <div className="space-y-2">
-            <Label htmlFor="circle-name">Circle name</Label>
-            <Input id="circle-name" placeholder="e.g. Project Nova" />
+            <Label htmlFor="circle-name">
+              Circle name
+            </Label>
+
+            <Input
+              id="circle-name"
+              placeholder="e.g. Project Nova"
+            />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="circle-description">Description</Label>
+            <Label htmlFor="circle-description">
+              Description
+            </Label>
+
             <Textarea
               id="circle-description"
               rows={3}
@@ -80,16 +127,32 @@ export function CreateCircleModal({ trigger }: { trigger: ReactNode }) {
               className="resize-none"
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="circle-privacy">Privacy level</Label>
+            <Label htmlFor="circle-privacy">
+              Privacy level
+            </Label>
+
             <Select defaultValue="private">
-              <SelectTrigger id="circle-privacy" className="w-full">
+              <SelectTrigger
+                id="circle-privacy"
+                className="w-full"
+              >
                 <SelectValue />
               </SelectTrigger>
+
               <SelectContent>
-                <SelectItem value="private">Private</SelectItem>
-                <SelectItem value="restricted">Restricted</SelectItem>
-                <SelectItem value="invite">Invite only</SelectItem>
+                <SelectItem value="private">
+                  Private
+                </SelectItem>
+
+                <SelectItem value="restricted">
+                  Restricted
+                </SelectItem>
+
+                <SelectItem value="invite">
+                  Invite only
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -98,22 +161,51 @@ export function CreateCircleModal({ trigger }: { trigger: ReactNode }) {
             <p className="text-muted-foreground text-[11px] tracking-widest uppercase">
               Visibility controls
             </p>
-            <PrivacyToggle label="Hide member count" />
-            <PrivacyToggle label="Hide member directory" />
-            <PrivacyToggle label="Hide online status" />
-            <PrivacyToggle label="Disable join and leave notifications" />
-            <PrivacyToggle label="Restrict invitations" defaultChecked={false} />
+
+            <PrivacyToggle
+              label="Hide member count"
+            />
+
+            <PrivacyToggle
+              label="Hide member directory"
+            />
+
+            <PrivacyToggle
+              label="Hide online status"
+            />
+
+            <PrivacyToggle
+              label="Disable join and leave notifications"
+            />
+
+            <PrivacyToggle
+              label="Restrict invitations"
+              defaultChecked={false}
+            />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              setOpen(false)
+            }
+          >
             Cancel
           </Button>
+
           <Button
             onClick={() => {
               setOpen(false);
-              toast.success("Circle created", { description: "Member directory hidden by default" });
+
+              toast.success(
+                "Circle created",
+                {
+                  description:
+                    "Member directory hidden by default",
+                },
+              );
             }}
           >
             Create Circle
@@ -124,30 +216,74 @@ export function CreateCircleModal({ trigger }: { trigger: ReactNode }) {
   );
 }
 
-export function ScheduleMeetingModal({ trigger }: { trigger: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const [done, setDone] = useState(false);
+export function ScheduleMeetingModal({
+  trigger,
+  circleId,
+}: {
+  trigger: ReactNode;
+  circleId: string;
+}) {
+  const [open, setOpen] =
+    useState(false);
 
+  const [done, setDone] =
+    useState(false);
+  const [title, setTitle] =
+    useState("");
+
+  const [date, setDate] =
+    useState("");
+
+  const [time, setTime] =
+    useState("");
+
+  const [description, setDescription] =
+    useState("");
+
+  const [saving, setSaving] =
+    useState(false);
   return (
     <Dialog
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
-        if (!v) setTimeout(() => setDone(false), 200);
+
+        if (!v) {
+          setTimeout(
+            () => setDone(false),
+            200,
+          );
+        }
       }}
     >
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+
       <DialogContent className="glass max-h-[90dvh] overflow-y-auto sm:max-w-[540px]">
         {done ? (
           <div className="flex flex-col items-center py-10 text-center">
             <span className="bg-success/15 text-success grid h-14 w-14 place-items-center rounded-2xl">
-              <CheckCircle2 className="h-7 w-7" aria-hidden />
+              <CheckCircle2
+                className="h-7 w-7"
+                aria-hidden
+              />
             </span>
-            <DialogTitle className="mt-5 text-base">Meeting scheduled</DialogTitle>
+
+            <DialogTitle className="mt-5 text-base">
+              Meeting scheduled
+            </DialogTitle>
+
             <DialogDescription className="mt-1.5 max-w-xs text-xs">
               Invitations were sent privately. Participants are not disclosed to attendees.
             </DialogDescription>
-            <Button className="mt-6" onClick={() => setOpen(false)}>
+
+            <Button
+              className="mt-6"
+              onClick={() =>
+                setOpen(false)
+              }
+            >
               Done
             </Button>
           </div>
@@ -155,8 +291,13 @@ export function ScheduleMeetingModal({ trigger }: { trigger: ReactNode }) {
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <ShieldCheck className="text-primary h-4 w-4" aria-hidden /> Schedule a meeting
+                <ShieldCheck
+                  className="text-primary h-4 w-4"
+                  aria-hidden
+                />
+                Schedule a meeting
               </DialogTitle>
+
               <DialogDescription>
                 Meetings inherit the privacy posture of the selected Circle.
               </DialogDescription>
@@ -164,74 +305,243 @@ export function ScheduleMeetingModal({ trigger }: { trigger: ReactNode }) {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="meeting-title">Meeting title</Label>
-                <Input id="meeting-title" placeholder="Product Strategy" />
+                <Label htmlFor="meeting-title">
+                  Meeting title
+                </Label>
+
+                <Input
+                  id="meeting-title"
+                  placeholder="Product Strategy"
+                  value={title}
+                  onChange={(event) =>
+                    setTitle(event.target.value)
+                  }
+                />
               </div>
+
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="meeting-date">Date</Label>
-                  <Input id="meeting-date" type="date" />
+                  <Label htmlFor="meeting-date">
+                    Date
+                  </Label>
+
+                  <Input
+                    id="meeting-date"
+                    type="date"
+                    value={date}
+                    onChange={(event) =>
+                      setDate(event.target.value)
+                    }
+                  />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="meeting-time">Time</Label>
-                  <Input id="meeting-time" type="time" />
+                  <Label htmlFor="meeting-time">
+                    Time
+                  </Label>
+
+                  <Input
+                    id="meeting-time"
+                    type="time"
+                    value={time}
+                    onChange={(event) =>
+                      setTime(event.target.value)
+                    }
+                  />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="meeting-duration">Duration</Label>
+                  <Label htmlFor="meeting-duration">
+                    Duration
+                  </Label>
+
                   <Select defaultValue="45">
-                    <SelectTrigger id="meeting-duration" className="w-full">
+                    <SelectTrigger
+                      id="meeting-duration"
+                      className="w-full"
+                    >
                       <SelectValue />
                     </SelectTrigger>
+
                     <SelectContent>
-                      <SelectItem value="15">15 min</SelectItem>
-                      <SelectItem value="30">30 min</SelectItem>
-                      <SelectItem value="45">45 min</SelectItem>
-                      <SelectItem value="60">1 hour</SelectItem>
+                      <SelectItem value="15">
+                        15 min
+                      </SelectItem>
+
+                      <SelectItem value="30">
+                        30 min
+                      </SelectItem>
+
+                      <SelectItem value="45">
+                        45 min
+                      </SelectItem>
+
+                      <SelectItem value="60">
+                        1 hour
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="meeting-circle">Circle / participants</Label>
-                <Select defaultValue={circles[0]!.id}>
-                  <SelectTrigger id="meeting-circle" className="w-full">
+                <Label htmlFor="meeting-circle">
+                  Circle / participants
+                </Label>
+
+                <Select
+                  defaultValue={
+                    circles[0]!.id
+                  }
+                >
+                  <SelectTrigger
+                    id="meeting-circle"
+                    className="w-full"
+                  >
                     <SelectValue />
                   </SelectTrigger>
+
                   <SelectContent>
                     {circles.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
+                      <SelectItem
+                        key={c.id}
+                        value={c.id}
+                      >
                         {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="meeting-description">Description</Label>
+                <Label htmlFor="meeting-description">
+                  Description
+                </Label>
+
                 <Textarea
                   id="meeting-description"
                   rows={3}
                   className="resize-none"
                   placeholder="Agenda and context"
+                  value={description}
+                  onChange={(event) =>
+                    setDescription(
+                      event.target.value,
+                    )
+                  }
                 />
               </div>
+
               <div className="space-y-2">
                 <p className="text-muted-foreground text-[11px] tracking-widest uppercase">
                   Privacy
                 </p>
+
                 <PrivacyToggle
                   label="Private meeting"
                   description="Participant list is hidden from attendees."
                 />
-                <PrivacyToggle label="Invite only" description="Link joining is disabled." />
+
+                <PrivacyToggle
+                  label="Invite only"
+                  description="Link joining is disabled."
+                />
               </div>
             </div>
 
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  setOpen(false)
+                }
+              >
                 Cancel
               </Button>
-              <Button onClick={() => setDone(true)}>Schedule Meeting</Button>
+
+              <Button
+                disabled={saving}
+                onClick={async () => {
+                  if (!title.trim()) {
+                    toast.error(
+                      "Meeting title is required",
+                    );
+                    return;
+                  }
+
+                  if (!date || !time) {
+                    toast.error(
+                      "Meeting date and time are required",
+                    );
+                    return;
+                  }
+
+                  const scheduledAt =
+                    new Date(
+                      `${date}T${time}`,
+                    );
+
+                  if (
+                    Number.isNaN(
+                      scheduledAt.getTime(),
+                    )
+                  ) {
+                    toast.error(
+                      "Invalid meeting date or time",
+                    );
+                    return;
+                  }
+
+                  if (
+                    scheduledAt.getTime() <=
+                    Date.now()
+                  ) {
+                    toast.error(
+                      "Meeting must be scheduled for a future time",
+                    );
+                    return;
+                  }
+
+                  try {
+                    setSaving(true);
+
+                    await createCircleMeeting(
+                      circleId,
+                      {
+                        title: title.trim(),
+                        description:
+                          description.trim(),
+                        scheduledAt:
+                          scheduledAt.toISOString(),
+                      },
+                    );
+
+                    toast.success(
+                      "Meeting scheduled successfully",
+                    );
+
+                    setDone(true);
+
+                    setTitle("");
+                    setDate("");
+                    setTime("");
+                    setDescription("");
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : "Failed to schedule meeting",
+                    );
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {saving
+                  ? "Scheduling..."
+                  : "Schedule Meeting"}
+              </Button>
             </DialogFooter>
           </>
         )}
@@ -240,34 +550,207 @@ export function ScheduleMeetingModal({ trigger }: { trigger: ReactNode }) {
   );
 }
 
-export function ManageCircleModal({ trigger }: { trigger: ReactNode }) {
+export function ManageCircleModal({
+  trigger,
+  circleId,
+  circleName,
+  circleDescription = "",
+}: {
+  trigger: ReactNode;
+  circleId: string;
+  circleName: string;
+  circleDescription?: string;
+}) {
+  const [name, setName] =
+    useState(circleName);
+
+  const [description, setDescription] =
+    useState(circleDescription);
+
+  const [saving, setSaving] =
+    useState(false);
+
   return (
     <Dialog>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="glass sm:max-w-[520px]">
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+
+      <DialogContent className="glass max-h-[90dvh] overflow-y-auto sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Users className="text-primary h-4 w-4" aria-hidden /> Manage Circle
+            <Users
+              className="text-primary h-4 w-4"
+              aria-hidden
+            />
+            Manage Circle
           </DialogTitle>
+
           <DialogDescription>
-            Administrative controls. Member data shown here is never exposed in member views.
+            Manage settings for{" "}
+            <strong>{circleName}</strong>.
+            Member data shown here is never exposed
+            in normal member views.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <PrivacyToggle label="Hide member count" />
-          <PrivacyToggle label="Hide member directory" />
-          <PrivacyToggle label="Hide online status" />
-          <PrivacyToggle label="Restrict invitations" defaultChecked={false} />
+
+        {/* Edit Circle */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="manage-circle-name">
+              Circle name
+            </Label>
+
+            <Input
+              id="manage-circle-name"
+              value={name}
+              onChange={(event) =>
+                setName(event.target.value)
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="manage-circle-description">
+              Description
+            </Label>
+
+            <Textarea
+              id="manage-circle-description"
+              rows={3}
+              value={description}
+              onChange={(event) =>
+                setDescription(
+                  event.target.value,
+                )
+              }
+              className="resize-none"
+            />
+          </div>
         </div>
-        <DialogFooter>
-          <Button asChild variant="outline">
-            <a href="/admin">Open management console</a>
+
+        {/* Privacy settings */}
+        <div className="space-y-2">
+          <PrivacyToggle
+            label="Hide member count"
+          />
+
+          <PrivacyToggle
+            label="Hide member directory"
+          />
+
+          <PrivacyToggle
+            label="Hide online status"
+          />
+
+          <PrivacyToggle
+            label="Restrict invitations"
+            defaultChecked={false}
+          />
+        </div>
+
+        {/* Member management */}
+        <div className="border-border border-t pt-4">
+          <CircleMemberManager
+            circleId={circleId}
+          />
+        </div>
+
+        {/* Leave Circle */}
+        <div className="border-border border-t pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="text-destructive hover:text-destructive w-full"
+            onClick={async () => {
+              const confirmed =
+                window.confirm(
+                  "Are you sure you want to leave this Circle?",
+                );
+
+              if (!confirmed) {
+                return;
+              }
+
+              try {
+                await leaveCircle(
+                  circleId,
+                );
+
+                toast.success(
+                  "You have left the Circle.",
+                );
+
+                window.location.href =
+                  "/circles";
+              } catch (error) {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to leave Circle",
+                );
+              }
+            }}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Leave Circle
           </Button>
-          <Button onClick={() => toast.success("Circle settings saved")}>Save changes</Button>
+        </div>
+
+        <DialogFooter>
+          <Button
+            asChild
+            variant="outline"
+          >
+            <a
+              href={`/circles/${circleId}/members`}
+            >
+              Manage members
+            </a>
+          </Button>
+
+          <Button
+            disabled={saving}
+            onClick={async () => {
+              if (!name.trim()) {
+                toast.error(
+                  "Circle name is required",
+                );
+                return;
+              }
+
+              try {
+                setSaving(true);
+
+                await editCircle(
+                  circleId,
+                  {
+                    name: name.trim(),
+                    description:
+                      description.trim(),
+                  },
+                );
+
+                toast.success(
+                  "Circle updated successfully",
+                );
+              } catch (error) {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to update Circle",
+                );
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving
+              ? "Saving..."
+              : "Save changes"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-
