@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AppShell } from "@/components/velora/app-shell";
+import { AdminShell } from "@/components/velora/AdminShell";
 import { StatCard } from "@/components/velora/cards";
 import { Avatar, PrivacyBadge, SectionHeading } from "@/components/velora/primitives";
 import { circles, members } from "@/lib/mock-data";
@@ -44,7 +44,7 @@ function AdminPage() {
   const list = members.filter((m) => m.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <AppShell>
+   <AdminShell>
       <div className="mx-auto max-w-5xl space-y-9">
         <header className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="min-w-0">
@@ -153,7 +153,7 @@ function AdminPage() {
           </div>
         </section>
       </div>
-    </AppShell>
+   </AdminShell>
   );
 }
 

@@ -18,6 +18,7 @@ import { Route as MeetingsRouteImport } from './routes/meetings'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as CirclesIndexRouteImport } from './routes/circles.index'
 import { Route as CirclesCircleIdRouteImport } from './routes/circles.$circleId'
 import { Route as MeetingMeetingIdRouteImport } from './routes/meeting.$meetingId'
@@ -67,6 +68,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperadminRoute = SuperadminRouteImport.update({
+  id: '/superadmin',
+  path: '/superadmin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CirclesIndexRoute = CirclesIndexRouteImport.update({
   id: '/circles/',
   path: '/circles/',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
+  '/superadmin': typeof SuperadminRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
   '/circles/': typeof CirclesIndexRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
+  '/superadmin': typeof SuperadminRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
   '/circles': typeof CirclesIndexRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
+  '/superadmin': typeof SuperadminRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
   '/circles/': typeof CirclesIndexRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
+    | '/superadmin'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
     | '/circles/'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
+    | '/superadmin'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
     | '/circles'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
+    | '/superadmin'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
     | '/circles/'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   SavedRoute: typeof SavedRoute
   SettingsRoute: typeof SettingsRoute
+  SuperadminRoute: typeof SuperadminRoute
   CirclesCircleIdRoute: typeof CirclesCircleIdRoute
   MeetingMeetingIdRoute: typeof MeetingMeetingIdRoute
   CirclesIndexRoute: typeof CirclesIndexRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/superadmin': {
+      id: '/superadmin'
+      path: '/superadmin'
+      fullPath: '/superadmin'
+      preLoaderRoute: typeof SuperadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/circles/': {
       id: '/circles/'
       path: '/circles'
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   SavedRoute: SavedRoute,
   SettingsRoute: SettingsRoute,
+  SuperadminRoute: SuperadminRoute,
   CirclesCircleIdRoute: CirclesCircleIdRoute,
   MeetingMeetingIdRoute: MeetingMeetingIdRoute,
   CirclesIndexRoute: CirclesIndexRoute,
