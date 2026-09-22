@@ -1,5 +1,7 @@
+import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 
+dotenv.config();
 const emailHost =
   process.env.EMAIL_HOST;
 

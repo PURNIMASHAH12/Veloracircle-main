@@ -6,7 +6,8 @@ import mongoose from "mongoose";
 import "./models/Notification";
 
 import notificationRoutes from "./routes/NotificationRoutes";
-
+import circleMeetingEmailRoutes from "./routes/CircleMeetingEmailRoutes";
+import circleMeetingReminderRoutes from "./routes/CircleMeetingReminderRoutes";
 dotenv.config();
 
 const app = express();
@@ -35,6 +36,14 @@ app.get("/", (_req, res) => {
 app.use(
   "/api/notifications",
   notificationRoutes,
+);
+app.use(
+  "/api/notifications",
+  circleMeetingEmailRoutes,
+);
+app.use(
+  "/api/notifications",
+  circleMeetingReminderRoutes,
 );
 
 if (!MONGO_URI) {
