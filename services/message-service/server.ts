@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
 import { setIO } from "./socket";
 import "./models/User";
-
+import path from "path";
 import messageRoutes from "./routes/MessageRoutes";
 import conversationRoutes from "./routes/ConversationRoutes";
 
@@ -16,6 +16,12 @@ import { registerReadReceiptSocket } from "./socket/ReadReceiptSocket";
 dotenv.config();
 
 const app = express();
+app.use(
+  "/uploads",
+  express.static(
+    path.join(process.cwd(), "uploads"),
+  ),
+);
 
 const httpServer = http.createServer(app);
 

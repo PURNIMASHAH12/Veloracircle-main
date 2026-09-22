@@ -1,4 +1,6 @@
 import { ReadReceipt } from "@/components/velora/ReadReceipt";
+import { VeloraEmojiPicker } from "@/components/velora/EmojiPicker";
+import { AttachmentPicker } from "@/components/velora/AttachmentPicker";
 import {
   Bookmark,
   Copy,
@@ -285,7 +287,7 @@ export function MessageBubble({
           )}
         >
           {message.kind === "file" &&
-          message.file ? (
+            message.file ? (
             <div className="border-border bg-surface-2/70 mb-2 flex items-center gap-3 rounded-xl border p-2.5">
               <span className="bg-primary/10 text-primary grid h-9 w-9 shrink-0 place-items-center rounded-lg">
                 <FileText
@@ -397,6 +399,8 @@ export function MessageComposer({
 }) {
   const [value, setValue] =
     useState("");
+  const [showEmojiPicker, setShowEmojiPicker] =
+    useState(false);
 
   const send = async () => {
     const text = value.trim();
@@ -448,7 +452,7 @@ export function MessageComposer({
       if (!response.ok) {
         toast.error(
           data.message ||
-            "Failed to send message",
+          "Failed to send message",
         );
         return;
       }
@@ -473,80 +477,96 @@ export function MessageComposer({
   };
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void send();
-      }}
-      className="border-border bg-surface/80 safe-bottom border-t p-3 backdrop-blur-xl sm:p-4"
-    >
-      <div className="border-border bg-surface-2/60 focus-within:border-primary/40 flex items-end gap-1.5 rounded-2xl border p-1.5 transition-colors">
-        <IconButton
-          icon={Plus}
-          label="More options"
-          className="h-9 w-9"
-        />
-
-        <IconButton
-          icon={Paperclip}
-          label="Attach file"
-          className="hidden h-9 w-9 sm:inline-flex"
-        />
-
-        <label
-          className="sr-only"
-          htmlFor="composer"
-        >
-          Write a message
-        </label>
-
-        <textarea
-          id="composer"
-          rows={1}
-          value={value}
-          onChange={(event) =>
-            setValue(
-              event.target.value,
-            )
-          }
-          onKeyDown={(event) => {
-            if (
-              event.key ===
-                "Enter" &&
-              !event.shiftKey
-            ) {
-              event.preventDefault();
-              void send();
-            }
-          }}
-          placeholder={placeholder}
-          className="placeholder:text-muted-foreground max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none"
-        />
-
-        <IconButton
-          icon={Smile}
-          label="Emoji"
-          className="hidden h-9 w-9 sm:inline-flex"
-        />
-
-        <IconButton
-          icon={Mic}
-          label="Record voice message"
-          className="h-9 w-9"
-        />
-
-        <button
-          type="submit"
-          aria-label="Send message"
-          className="bg-primary text-primary-foreground focus-visible:ring-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 outline-none hover:brightness-110 active:scale-95 focus-visible:ring-2"
-        >
-          <Send
-            className="h-4 w-4"
-            aria-hidden
+    <>
+      {showEmojiPicker ? (
+        <div className="mb-2 flex justify-end">
+          <VeloraEmojiPicker
+            onEmojiSelect={(emoji) => {
+              setValue(
+                (currentValue) =>
+                  currentValue + emoji,
+              );
+            }}
           />
-        </button>
-      </div>
-    </form>
+        </div>
+      ) : null}
+
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void send();
+        }}
+        className="border-border bg-surface/80 safe-bottom border-t p-3 backdrop-blur-xl sm:p-4"
+      >
+        <div className="border-border bg-surface-2/60 focus-within:border-primary/40 flex items-end gap-1.5 rounded-2xl border p-1.5 transition-colors">
+          <IconButton
+            icon={Plus}
+            label="More options"
+            className="h-9 w-9"
+          />
+
+          <AttachmentPicker
+            conversationId={conversationId}
+            onFileSent={(message) => {
+              onMessageSent(message);
+            }}
+          />
+          <label
+            className="sr-only"
+            htmlFor="composer"
+          >
+            Write a message
+          </label>
+
+          <textarea
+            id="composer"
+            rows={1}
+            value={value}
+            onChange={(event) =>
+              setValue(event.target.value)
+            }
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey
+              ) {
+                event.preventDefault();
+                void send();
+              }
+            }}
+            placeholder={placeholder}
+            className="placeholder:text-muted-foreground max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none"
+          />
+
+          <IconButton
+            icon={Smile}
+            label="Emoji"
+            className="hidden h-9 w-9 sm:inline-flex"
+            onClick={() =>
+              setShowEmojiPicker(
+                (current) => !current,
+              )
+            }
+          />
+
+          <IconButton
+            icon={Mic}
+            label="Record voice message"
+            className="h-9 w-9"
+          />
+
+          <button
+            type="submit"
+            aria-label="Send message"
+            className="bg-primary text-primary-foreground focus-visible:ring-ring inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 outline-none hover:brightness-110 active:scale-95 focus-visible:ring-2"
+          >
+            <Send
+              className="h-4 w-4"
+              aria-hidden
+            />
+          </button>
+        </div>
+      </form>
+    </>
   );
 }
-

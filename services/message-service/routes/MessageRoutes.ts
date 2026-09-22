@@ -7,6 +7,12 @@ import {
 } from "../controllers/MessageController";
 
 import {
+  sendFileMessage,
+} from "../controllers/FileController";
+
+import upload from "../middleware/upload";
+
+import {
   createOrGetConversation,
   getMyConversations,
   markConversationAsRead,
@@ -17,6 +23,12 @@ import {
 const router = express.Router();
 
 /* Messages */
+
+router.post(
+  "/file",
+  upload.single("file"),
+  sendFileMessage,
+);
 
 router.post("/", sendMessage);
 

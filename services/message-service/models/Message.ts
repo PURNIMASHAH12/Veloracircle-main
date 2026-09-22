@@ -3,7 +3,18 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IMessage extends Document {
   conversation: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
-  text: string;
+
+  type: "text" | "file" | "voice";
+
+  text?: string;
+
+  file?: {
+    name: string;
+    url: string;
+    size: number;
+    mimeType: string;
+  };
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,11 +33,35 @@ const messageSchema = new Schema<IMessage>(
       ref: "User",
     },
 
+    type: {
+      type: String,
+      enum: ["text", "file", "voice"],
+      default: "text",
+      required: true,
+    },
+
     text: {
       type: String,
-      required: true,
       trim: true,
       maxlength: 2000,
+    },
+
+    file: {
+      name: {
+        type: String,
+      },
+
+      url: {
+        type: String,
+      },
+
+      size: {
+        type: Number,
+      },
+
+      mimeType: {
+        type: String,
+      },
     },
   },
   {
