@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IUser extends Document {
   name: string;
   email: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "superadmin";
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -27,7 +27,7 @@ const UserSchema = new Schema<IUser>(
 
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "superadmin"],
       default: "user",
     },
 

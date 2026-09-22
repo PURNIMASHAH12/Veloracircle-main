@@ -594,3 +594,152 @@ export const resetPassword = async (
     });
   }
 };
+export const adminLogin = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({
+        message: "Email and password are required",
+      });
+      return;
+    }
+
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
+
+    if (!user) {
+      res.status(401).json({
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+    if (user.role !== "admin") {
+      res.status(403).json({
+        message: "Admin access required",
+      });
+      return;
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      res.status(401).json({
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "1d",
+      },
+    );
+
+    res.status(200).json({
+      message: "Admin login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Admin login error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+export const superadminLogin = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({
+        message: "Email and password are required",
+      });
+      return;
+    }
+
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
+
+    if (!user) {
+      res.status(401).json({
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+    if (user.role !== "superadmin") {
+      res.status(403).json({
+        message: "Superadmin access required",
+      });
+      return;
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      res.status(401).json({
+        message: "Invalid email or password",
+      });
+      return;
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "1d",
+      },
+    );
+
+    res.status(200).json({
+      message: "Superadmin login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Superadmin login error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};

@@ -23,7 +23,7 @@ import { StatCard } from "@/components/velora/cards";
 import { Avatar, PrivacyBadge, SectionHeading } from "@/components/velora/primitives";
 import { circles, members } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
       { title: "Management console — Velora Circle" },

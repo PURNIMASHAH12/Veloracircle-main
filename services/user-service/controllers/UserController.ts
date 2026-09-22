@@ -75,3 +75,25 @@ export const searchUsers = async (
     });
   }
 };
+export const getAdmins = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const admins = await User.find({
+      role: "admin",
+    })
+      .select("-password -__v")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      admins,
+    });
+  } catch (error) {
+    console.error("Get admins error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};

@@ -3,6 +3,8 @@ import express from "express";
 import {
   register,
   login,
+  adminLogin,
+  superadminLogin,
   verifyEmailOtp,
   resendOtp,
   forgotPassword,
@@ -13,6 +15,10 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
+
+router.post("/admin-login", adminLogin);
+router.post("/superadmin-login", superadminLogin);
+
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
