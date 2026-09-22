@@ -32,13 +32,27 @@ type Admin = {
 };
 
 function SuperadminPage() {
+    const navigate = useNavigate();
+
+  const token = localStorage.getItem("token");
+  const storedUser = localStorage.getItem("user");
+
+  if (!token || !storedUser) {
+    navigate({ to: "/superadmin/login" });
+    return null;
+  }
+
+  const user = JSON.parse(storedUser);
+
+  if (user.role !== "superadmin") {
+    navigate({ to: "/superadmin/login" });
+    return null;
+  }
   const [collapsed, setCollapsed] = useState(false);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const navigate = useNavigate();
-
-  useEffect(() => {
+ useEffect(() => {
     const fetchAdmins = async () => {
       try {
         const token = localStorage.getItem("token");

@@ -89,19 +89,40 @@ const fileIcon = {
   video: FileVideo,
 };
 
-export function FileRow({ file }: { file: FileItem }) {
+export function FileRow({
+  file,
+  onDownload,
+  onShare,
+  onSave,
+  onRemove,
+}: {
+  file: FileItem;
+  onDownload?: (file: FileItem) => void;
+  onShare?: (file: FileItem) => void;
+  onSave?: (file: FileItem) => void;
+  onRemove?: (file: FileItem) => void;
+}) {
   const Icon = fileIcon[file.type];
+
   return (
     <div className="border-border hover:bg-accent/40 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b px-3 py-3 transition-colors last:border-b-0 sm:px-4">
       <span className="bg-surface-2 text-primary border-border grid h-10 w-10 shrink-0 place-items-center rounded-xl border">
-        <Icon className="h-[18px] w-[18px]" aria-hidden />
+        <Icon
+          className="h-[18px] w-[18px]"
+          aria-hidden
+        />
       </span>
+
       <div className="min-w-0">
-        <p className="truncate text-[13px] font-medium">{file.name}</p>
+        <p className="truncate text-[13px] font-medium">
+          {file.name}
+        </p>
+
         <p className="text-muted-foreground truncate text-[11px]">
           {file.owner} · {file.date} · {file.size}
         </p>
       </div>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -109,14 +130,43 @@ export function FileRow({ file }: { file: FileItem }) {
             aria-label={`Actions for ${file.name}`}
             className="text-muted-foreground hover:bg-accent hover:text-foreground grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors"
           >
-            <MoreHorizontal className="h-4 w-4" />
+            <MoreHorizontal
+              className="h-4 w-4"
+            />
           </button>
         </DropdownMenuTrigger>
+
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => toast("Download started")}>Download</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => toast("Saved to your library")}>Save</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => toast("Share link copied")}>Share</DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => toast("Removed")}>
+          <DropdownMenuItem
+            onSelect={() =>
+              onDownload?.(file)
+            }
+          >
+            Download
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onSelect={() =>
+              onSave?.(file)
+            }
+          >
+            Save
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onSelect={() =>
+              onShare?.(file)
+            }
+          >
+            Share
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={() =>
+              onRemove?.(file)
+            }
+          >
             Remove
           </DropdownMenuItem>
         </DropdownMenuContent>

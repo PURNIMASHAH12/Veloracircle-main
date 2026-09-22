@@ -1,5 +1,9 @@
 import express from "express";
-
+import {
+  saveFile,
+  getSavedItems,
+  removeSavedItem,
+} from "../controllers/SavedController";
 import {
   sendMessage,
   getMessages,
@@ -8,6 +12,7 @@ import {
 
 import {
   sendFileMessage,
+  getFiles,
 } from "../controllers/FileController";
 
 import upload from "../middleware/upload";
@@ -39,7 +44,28 @@ router.post(
 );
 
 router.post("/", sendMessage);
+router.get(
+  "/files",
+  getFiles,
+);
+/* =====================================================
+   SAVED ITEMS
+===================================================== */
 
+router.post(
+  "/saved/file",
+  saveFile,
+);
+
+router.get(
+  "/saved",
+  getSavedItems,
+);
+
+router.delete(
+  "/saved/:savedItemId",
+  removeSavedItem,
+);
 router.get(
   "/:conversationId",
   getMessages,

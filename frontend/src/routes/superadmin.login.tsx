@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 export const Route = createFileRoute("/superadmin/login")({
   component: SuperadminLoginPage,
@@ -7,7 +7,30 @@ export const Route = createFileRoute("/superadmin/login")({
 
 function SuperadminLoginPage() {
   const navigate = useNavigate();
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
 
+    if (!token || !storedUser) {
+      return;
+    }
+
+    try {
+      const user = JSON.parse(storedUser);
+
+      if (user.role === "superadmin") {
+        navigate({ to: "/superadmin" });
+        return;
+      }
+
+      if (user.role === "admin") {
+        navigate({ to: "/admin" });
+      }
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
+  }, [navigate]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

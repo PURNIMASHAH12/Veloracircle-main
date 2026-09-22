@@ -207,3 +207,106 @@ export const sendFileMessage = async (
     });
   }
 };
+/* =====================================================
+   GET MY FILES
+===================================================== */
+
+export const getFiles = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = getUserFromToken(req);
+
+    if (!user) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    /*
+      Find conversations where the logged-in user
+      is a participant.
+    */
+    const conversations =
+      await Conversation.find({
+        participants: user.id,
+      }).select("_id");
+
+    const conversationIds =
+      conversations.map(
+        (conversation) => conversation._id,
+      );
+
+    /*
+      Find all file messages from those conversations.
+    */
+    const fileMessages =
+      await Message.find({
+        conversation: {
+          $in: conversationIds,
+        },
+        type: "file",
+      })
+        .populate(
+          "sender",
+          "name email",
+        )
+        .sort({
+          createdAt: -1,
+        });
+
+    /*
+      Format the response for the Files page.
+    */
+    const formattedFiles =
+      fileMessages.map((message) => ({
+        id: message._id,
+        conversationId:
+          message.conversation,
+        name:
+          message.file?.name || "Unknown file",
+        url:
+          message.file?.url || "",
+        size:
+          message.file?.size || 0,
+        mimeType:
+          message.file?.mimeType ||
+          "application/octet-stream",
+        sender: message.sender,
+        createdAt:
+          message.createdAt,
+        group:
+          message.sender?._id?.toString() ===
+          user.id
+            ? "mine"
+            : "shared",
+      }));
+
+    /*
+      Recent files = all files.
+      My files = files sent by current user.
+      Shared = files received from other users.
+    */
+    res.status(200).json({
+      files: formattedFiles,
+      recent: formattedFiles,
+      mine: formattedFiles.filter(
+        (file) => file.group === "mine",
+      ),
+      shared: formattedFiles.filter(
+        (file) => file.group === "shared",
+      ),
+    });
+  } catch (error) {
+    console.error(
+      "Get files error:",
+      error,
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};

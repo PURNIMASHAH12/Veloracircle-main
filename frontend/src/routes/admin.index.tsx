@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Activity, MailPlus, Search, ShieldAlert, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,11 @@ import {
 } from "@/components/ui/select";
 import { AdminShell } from "@/components/velora/AdminShell";
 import { StatCard } from "@/components/velora/cards";
-import { Avatar, PrivacyBadge, SectionHeading } from "@/components/velora/primitives";
+import {
+  Avatar,
+  PrivacyBadge,
+  SectionHeading,
+} from "@/components/velora/primitives";
 import { circles, members } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/admin/")({
@@ -32,53 +36,136 @@ export const Route = createFileRoute("/admin/")({
         content:
           "Owner and Admin console for Circle statistics, member roles and invitations. Never visible to members.",
       },
-      { property: "og:title", content: "Management console — Velora Circle" },
-      { property: "og:description", content: "Administrative controls for Circle owners." },
+      {
+        property: "og:title",
+        content: "Management console — Velora Circle",
+      },
+      {
+        property: "og:description",
+        content: "Administrative controls for Circle owners.",
+      },
     ],
   }),
   component: AdminPage,
 });
 
 function AdminPage() {
+  const navigate = useNavigate();
+
   const [query, setQuery] = useState("");
-  const list = members.filter((m) => m.name.toLowerCase().includes(query.toLowerCase()));
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
+    if (!token || !storedUser) {
+      navigate({ to: "/admin/login" });
+      return;
+    }
+
+    try {
+      const user = JSON.parse(storedUser);
+
+      if (user.role !== "admin") {
+        navigate({ to: "/admin/login" });
+        return;
+      }
+
+      setCheckingAuth(false);
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      navigate({ to: "/admin/login" });
+    }
+  }, [navigate]);
+
+  if (checkingAuth) {
+    return null;
+  }
+
+  const list = members.filter((m) =>
+    m.name.toLowerCase().includes(query.toLowerCase()),
+  );
 
   return (
-   <AdminShell>
+    <AdminShell>
       <div className="mx-auto max-w-5xl space-y-9">
         <header className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold sm:text-3xl">Management console</h1>
-              <PrivacyBadge label="Owner / Admin only" tone="accent" icon={ShieldAlert} />
+              <h1 className="text-2xl font-bold sm:text-3xl">
+                Management console
+              </h1>
+
+              <PrivacyBadge
+                label="Owner / Admin only"
+                tone="accent"
+                icon={ShieldAlert}
+              />
             </div>
+
             <p className="text-muted-foreground mt-1.5 text-sm">
-              Statistics and member data shown here never appear in member views.
+              Statistics and member data shown here never appear in member
+              views.
             </p>
           </div>
+
           <Button onClick={() => toast.success("Invitation sent")}>
-            <MailPlus className="h-4 w-4" /> Invite member
+            <MailPlus className="h-4 w-4" />
+            Invite member
           </Button>
         </header>
 
         <section>
-          <SectionHeading title="Circle overview" description="Alpha Circle" />
+          <SectionHeading
+            title="Circle overview"
+            description="Alpha Circle"
+          />
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Active conversations" value="38" hint="+6 this week" icon={Activity} tone="brand" />
-            <StatCard label="Members" value="125" hint="Hidden from members" icon={Users} />
-            <StatCard label="Pending invites" value="9" hint="3 expiring soon" icon={MailPlus} />
-            <StatCard label="Reports" value="2" hint="Awaiting review" icon={ShieldAlert} />
+            <StatCard
+              label="Active conversations"
+              value="38"
+              hint="+6 this week"
+              icon={Activity}
+              tone="brand"
+            />
+
+            <StatCard
+              label="Members"
+              value="125"
+              hint="Hidden from members"
+              icon={Users}
+            />
+
+            <StatCard
+              label="Pending invites"
+              value="9"
+              hint="3 expiring soon"
+              icon={MailPlus}
+            />
+
+            <StatCard
+              label="Reports"
+              value="2"
+              hint="Awaiting review"
+              icon={ShieldAlert}
+            />
           </div>
         </section>
 
         <section>
           <SectionHeading title="Member management" />
+
           <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
             <div className="relative">
               <Search
                 className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
                 aria-hidden
               />
+
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -87,10 +174,15 @@ function AdminPage() {
                 className="pl-9"
               />
             </div>
+
             <Select defaultValue={circles[0]!.id}>
-              <SelectTrigger className="w-full" aria-label="Filter by Circle">
+              <SelectTrigger
+                className="w-full"
+                aria-label="Filter by Circle"
+              >
                 <SelectValue />
               </SelectTrigger>
+
               <SelectContent>
                 {circles.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
@@ -112,35 +204,68 @@ function AdminPage() {
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {list.map((m) => (
-                  <tr key={m.id} className="border-border hover:bg-accent/30 border-b last:border-b-0">
+                  <tr
+                    key={m.id}
+                    className="border-border hover:bg-accent/30 border-b last:border-b-0"
+                  >
                     <td className="px-4 py-3">
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar initials={m.initials} size="sm" />
-                        <span className="truncate font-medium">{m.name}</span>
+
+                        <span className="truncate font-medium">
+                          {m.name}
+                        </span>
                       </div>
                     </td>
+
                     <td className="px-4 py-3">
-                      <PrivacyBadge label={m.role} tone={m.role === "Owner" ? "accent" : "muted"} icon={Users} />
+                      <PrivacyBadge
+                        label={m.role}
+                        tone={m.role === "Owner" ? "accent" : "muted"}
+                        icon={Users}
+                      />
                     </td>
-                    <td className="text-muted-foreground px-4 py-3">{m.status}</td>
-                    <td className="text-muted-foreground px-4 py-3">{m.joined}</td>
+
+                    <td className="text-muted-foreground px-4 py-3">
+                      {m.status}
+                    </td>
+
+                    <td className="text-muted-foreground px-4 py-3">
+                      {m.joined}
+                    </td>
+
                     <td className="px-4 py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="ghost" aria-label={`Manage ${m.name}`}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={`Manage ${m.name}`}
+                          >
                             Manage
                           </Button>
                         </DropdownMenuTrigger>
+
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => toast("Role updated")}>
+                          <DropdownMenuItem
+                            onSelect={() => toast("Role updated")}
+                          >
                             Change role
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => toast("Access suspended")}>
+
+                          <DropdownMenuItem
+                            onSelect={() => toast("Access suspended")}
+                          >
                             Suspend access
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => toast("Member removed")}>
+
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onSelect={() => toast("Member removed")}
+                          >
                             Remove
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -153,8 +278,6 @@ function AdminPage() {
           </div>
         </section>
       </div>
-   </AdminShell>
+    </AdminShell>
   );
 }
-
-
