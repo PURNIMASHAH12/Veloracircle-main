@@ -1,30 +1,44 @@
 import { useEffect } from "react";
-import type {
-  Dispatch,
-  SetStateAction,
-} from "react";
 
 import { messageSocket } from "@/socket";
 
 type RealtimeMessage = {
   _id: string;
+
   conversation: string;
+
   sender: {
     _id: string;
     name: string;
     email: string;
   };
-  text: string;
+
+  type: "text" | "file" | "voice";
+
+  text?: string;
+
+  file?: {
+    name: string;
+    url: string;
+    size: number;
+    mimeType: string;
+  };
+
   createdAt: string;
+
   readBy?: string[];
 };
 
 type UseRealtimeMessagesProps = {
   activeId: string | null;
-  setBackendMessages: Dispatch<
-    SetStateAction<RealtimeMessage[]>
+
+  setBackendMessages: React.Dispatch<
+    React.SetStateAction<RealtimeMessage[]>
   >;
-  onIncomingMessage?: () => void;
+
+  onIncomingMessage?: (
+    message: RealtimeMessage,
+  ) => void;
 };
 
 export function useRealtimeMessages({
@@ -40,24 +54,36 @@ export function useRealtimeMessages({
     const handleNewMessage = (
       message: RealtimeMessage,
     ) => {
-      if (message.conversation !== activeId) {
+      if (
+        message.conversation !==
+        activeId
+      ) {
         return;
       }
 
-      setBackendMessages((previous) => {
-        const alreadyExists = previous.some(
-          (existingMessage) =>
-            existingMessage._id === message._id,
-        );
+      setBackendMessages(
+        (previous) => {
+          const alreadyExists =
+            previous.some(
+              (existing) =>
+                existing._id ===
+                message._id,
+            );
 
-        if (alreadyExists) {
-          return previous;
-        }
+          if (alreadyExists) {
+            return previous;
+          }
 
-        return [...previous, message];
-      });
+          return [
+            ...previous,
+            message,
+          ];
+        },
+      );
 
-      onIncomingMessage?.();
+      onIncomingMessage?.(
+        message,
+      );
     };
 
     messageSocket.on(

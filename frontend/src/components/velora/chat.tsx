@@ -1,6 +1,7 @@
 import { ReadReceipt } from "@/components/velora/ReadReceipt";
 import { VeloraEmojiPicker } from "@/components/velora/EmojiPicker";
 import { AttachmentPicker } from "@/components/velora/AttachmentPicker";
+import { VoiceRecorder } from "@/components/velora/VoiceRecorder";
 import {
   Bookmark,
   Copy,
@@ -9,14 +10,13 @@ import {
   Forward,
   Mic,
   MoreHorizontal,
-  Paperclip,
   Play,
   Plus,
   Send,
   Smile,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -226,6 +226,65 @@ export function MessageBubble({
 }) {
   const self = message.self;
 
+console.log(
+  "BUBBLE VOICE CHECK:",
+  message.kind,
+  message.file,
+);
+
+  const [showFileMenu, setShowFileMenu] =
+    useState(false);
+
+  /*
+    Listen for another file menu opening.
+    This makes sure only one file menu
+    can stay open at a time.
+  */
+  useEffect(() => {
+    const handleOtherFileMenu = (
+      event: Event,
+    ) => {
+      const customEvent =
+        event as CustomEvent<string>;
+
+      if (
+        customEvent.detail !==
+        message.id
+      ) {
+        setShowFileMenu(false);
+      }
+    };
+
+    window.addEventListener(
+      "velora-file-menu-open",
+      handleOtherFileMenu,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "velora-file-menu-open",
+        handleOtherFileMenu,
+      );
+    };
+  }, [message.id]);
+
+  const toggleFileMenu = () => {
+    if (!showFileMenu) {
+      window.dispatchEvent(
+        new CustomEvent(
+          "velora-file-menu-open",
+          {
+            detail: message.id,
+          },
+        ),
+      );
+    }
+
+    setShowFileMenu(
+      (current) => !current,
+    );
+  };
+
   return (
     <div
       className={cn(
@@ -305,104 +364,159 @@ export function MessageBubble({
                 <span className="text-muted-foreground block text-[11px]">
                   {message.file.size}
                 </span>
-                <div className="mt-1">
-                  <details className="relative inline-block">
-                    <summary className="text-primary cursor-pointer list-none text-xs font-medium hover:underline">
-                      Download
-                    </summary>
 
-                    <div className="bg-background border-border absolute bottom-full left-0 z-50 mb-2 w-28 overflow-hidden rounded-lg border shadow-lg">
-                      <button
-                        type="button"
-                        className="hover:bg-muted block w-full px-3 py-2 text-left text-xs"
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(
-                              message.file?.url || "",
+                <div className="mt-1">
+                  <div className="relative inline-block">
+                    <button
+                      type="button"
+                      className="text-primary text-xs font-medium hover:underline"
+                      onClick={
+                        toggleFileMenu
+                      }
+                    >
+                      Download
+                    </button>
+
+                    {showFileMenu ? (
+                      <div className="bg-background border-border absolute bottom-full left-0 z-50 mb-2 w-28 overflow-hidden rounded-lg border shadow-lg">
+                        <button
+                          type="button"
+                          className="hover:bg-muted block w-full px-3 py-2 text-left text-xs"
+                          onClick={async () => {
+                            setShowFileMenu(
+                              false,
                             );
 
-                            if (!response.ok) {
-                              throw new Error(
-                                "Failed to open file",
+                            try {
+                              const response =
+                                await fetch(
+                                  message.file
+                                    ?.url ||
+                                  "",
+                                );
+
+                              if (
+                                !response.ok
+                              ) {
+                                throw new Error(
+                                  "Failed to open file",
+                                );
+                              }
+
+                              const blob =
+                                await response.blob();
+
+                              const blobUrl =
+                                URL.createObjectURL(
+                                  blob,
+                                );
+
+                              window.open(
+                                blobUrl,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+
+                              setTimeout(
+                                () => {
+                                  URL.revokeObjectURL(
+                                    blobUrl,
+                                  );
+                                },
+                                60000,
+                              );
+                            } catch (error) {
+                              console.error(
+                                "Open file error:",
+                                error,
                               );
                             }
+                          }}
+                        >
+                          Open
+                        </button>
 
-                            const blob =
-                              await response.blob();
-
-                            const blobUrl =
-                              URL.createObjectURL(blob);
-
-                            window.open(
-                              blobUrl,
-                              "_blank",
-                              "noopener,noreferrer",
+                        <button
+                          type="button"
+                          className="hover:bg-muted block w-full px-3 py-2 text-left text-xs"
+                          onClick={async () => {
+                            setShowFileMenu(
+                              false,
                             );
 
-                            setTimeout(() => {
-                              URL.revokeObjectURL(blobUrl);
-                            }, 60000);
-                          } catch (error) {
-                            console.error(
-                              "Open file error:",
-                              error,
-                            );
-                          }
-                        }}
-                      >
-                        Open
-                      </button>
+                            try {
+                              const response =
+                                await fetch(
+                                  message.file
+                                    ?.url ||
+                                  "",
+                                );
 
-                      <a
-                        href={message.file.url}
-                        download={message.file.name}
-                        className="hover:bg-muted block w-full px-3 py-2 text-xs"
-                      >
-                        Save as
-                      </a>
-                    </div>
-                  </details>
+                              if (
+                                !response.ok
+                              ) {
+                                throw new Error(
+                                  "Failed to download file",
+                                );
+                              }
+
+                              const blob =
+                                await response.blob();
+
+                              const fileHandle =
+                                await window.showSaveFilePicker(
+                                  {
+                                    suggestedName:
+                                      message.file
+                                        ?.name ||
+                                      "download",
+                                  },
+                                );
+
+                              const writable =
+                                await fileHandle.createWritable();
+
+                              await writable.write(
+                                blob,
+                              );
+
+                              await writable.close();
+                            } catch (error) {
+                              if (
+                                error instanceof
+                                DOMException &&
+                                error.name ===
+                                "AbortError"
+                              ) {
+                                return;
+                              }
+
+                              console.error(
+                                "Save file error:",
+                                error,
+                              );
+                            }
+                          }}
+                        >
+                          Save as
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>
           ) : null}
-          {message.kind === "voice" ? (
-            <div className="flex items-center gap-3">
-              <span className="bg-primary/15 text-primary grid h-8 w-8 place-items-center rounded-full">
-                <Play
-                  className="h-3.5 w-3.5"
-                  aria-hidden
-                />
-              </span>
 
-              <span
-                className="flex h-6 items-end gap-[3px]"
-                aria-hidden
-              >
-                {[
-                  6, 12, 18, 9, 22,
-                  14, 8, 16, 11, 20,
-                  7, 13, 17, 9,
-                ].map(
-                  (height, index) => (
-                    <span
-                      key={index}
-                      className="bg-primary/50 w-[3px] rounded-full"
-                      style={{
-                        height: `${height}px`,
-                      }}
-                    />
-                  ),
-                )}
-              </span>
-
-              <span className="text-muted-foreground text-[11px]">
-                0:42
-              </span>
-            </div>
-          ) : (
-            message.body
-          )}
+       {message.kind === "voice" ? (
+  <audio
+    controls
+    src={message.file?.url || ""}
+    className="h-9 max-w-[260px]"
+  />
+) : (
+  message.body
+)}
         </div>
 
         <div className="text-muted-foreground mt-1 flex items-center text-[11px]">
@@ -439,7 +553,6 @@ export function MessageBubble({
   );
 }
 
-
 /* =====================================================
    MESSAGE COMPOSER
 ===================================================== */
@@ -457,7 +570,11 @@ export function MessageComposer({
 }) {
   const [value, setValue] =
     useState("");
+
   const [showEmojiPicker, setShowEmojiPicker] =
+    useState(false);
+
+  const [showVoiceRecorder, setShowVoiceRecorder] =
     useState(false);
 
   const send = async () => {
@@ -548,6 +665,96 @@ export function MessageComposer({
           />
         </div>
       ) : null}
+      {showVoiceRecorder ? (
+        <div className="mb-2">
+          <VoiceRecorder
+            onCancel={() =>
+              setShowVoiceRecorder(false)
+            }
+            onRecorded={async (audioBlob) => {
+              const token =
+                localStorage.getItem("token");
+
+              if (!token) {
+                toast.error(
+                  "Please log in again",
+                );
+
+                return;
+              }
+
+              if (!conversationId) {
+                toast.error(
+                  "Please select a conversation first",
+                );
+
+                return;
+              }
+
+              try {
+                const formData =
+                  new FormData();
+
+                formData.append(
+                  "conversationId",
+                  conversationId,
+                );
+
+                formData.append(
+                  "file",
+                  audioBlob,
+                  `voice-${Date.now()}.webm`,
+                );
+
+                const response =
+                  await fetch(
+                    "/api/messages/voice",
+                    {
+                      method: "POST",
+
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                      },
+
+                      body: formData,
+                    },
+                  );
+
+                const data =
+                  await response.json();
+
+                if (!response.ok) {
+                  throw new Error(
+                    data.message ||
+                    "Failed to send voice message",
+                  );
+                }
+
+                onMessageSent(
+                  data.message,
+                );
+
+                setShowVoiceRecorder(false);
+
+                toast.success(
+                  "Voice message sent",
+                );
+              } catch (error) {
+                console.error(
+                  "Voice message error:",
+                  error,
+                );
+
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to send voice message",
+                );
+              }
+            }}
+          />
+        </div>
+      ) : null}
 
       <form
         onSubmit={(event) => {
@@ -569,6 +776,7 @@ export function MessageComposer({
               onMessageSent(message);
             }}
           />
+
           <label
             className="sr-only"
             htmlFor="composer"
@@ -611,6 +819,9 @@ export function MessageComposer({
             icon={Mic}
             label="Record voice message"
             className="h-9 w-9"
+            onClick={() =>
+              setShowVoiceRecorder(true)
+            }
           />
 
           <button

@@ -1,4 +1,8 @@
-import { useCallback, useEffect } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 
 import {
   messageSocket,
@@ -12,37 +16,83 @@ type UseMarkMessagesAsReadProps = {
 export function useMarkMessagesAsRead({
   activeId,
 }: UseMarkMessagesAsReadProps) {
+  const lastMarkedConversation =
+    useRef<string | null>(null);
+
   useEffect(() => {
     connectMessageSocket();
 
     return () => {
-      messageSocket.disconnect();
+      // Do not disconnect the shared message socket here.
+      // Other realtime features may still be using it.
     };
   }, []);
 
-  const markMessagesAsRead = useCallback(() => {
-    if (!activeId) {
-      return;
-    }
+  const markMessagesAsRead =
+    useCallback(() => {
+      if (!activeId) {
+        return;
+      }
 
-    const currentUser = JSON.parse(
-      localStorage.getItem("user") || "{}",
-    );
+      const currentUser =
+        JSON.parse(
+          localStorage.getItem(
+            "user",
+          ) || "{}",
+        );
 
-    const currentUserId =
-      currentUser.id || currentUser._id;
+      const currentUserId =
+        currentUser.id ||
+        currentUser._id;
 
-    if (!currentUserId) {
-      return;
-    }
+      if (!currentUserId) {
+        return;
+      }
 
-    messageSocket.emit("markMessagesAsRead", {
-      conversationId: activeId,
-      userId: currentUserId,
-    });
-  }, [activeId]);
+      const emitReadReceipt = () => {
+        messageSocket.emit(
+          "markMessagesAsRead",
+          {
+            conversationId:
+              activeId,
+            userId:
+              currentUserId,
+          },
+        );
+
+        lastMarkedConversation.current =
+          activeId;
+      };
+
+      if (messageSocket.connected) {
+        emitReadReceipt();
+        return;
+      }
+
+      messageSocket.once(
+        "connect",
+        emitReadReceipt,
+      );
+    }, [activeId]);
+
+  const markIfNeeded =
+    useCallback(() => {
+      if (
+        !activeId ||
+        lastMarkedConversation.current ===
+          activeId
+      ) {
+        return;
+      }
+
+      markMessagesAsRead();
+    }, [
+      activeId,
+      markMessagesAsRead,
+    ]);
 
   return {
     markMessagesAsRead,
+    markIfNeeded,
   };
 }

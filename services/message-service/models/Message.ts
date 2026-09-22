@@ -1,4 +1,7 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, {
+  Document,
+  Schema,
+} from "mongoose";
 
 export interface IMessage extends Document {
   conversation: mongoose.Types.ObjectId;
@@ -14,6 +17,8 @@ export interface IMessage extends Document {
     size: number;
     mimeType: string;
   };
+
+  readBy: mongoose.Types.ObjectId[];
 
   createdAt: Date;
   updatedAt: Date;
@@ -63,6 +68,13 @@ const messageSchema = new Schema<IMessage>(
         type: String,
       },
     },
+
+    readBy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,

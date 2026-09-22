@@ -11,7 +11,10 @@ import {
 } from "../controllers/FileController";
 
 import upload from "../middleware/upload";
-
+import voiceUpload from "../middleware/voiceUpload";
+import {
+  sendVoiceMessage,
+} from "../controllers/VoiceController";
 import {
   createOrGetConversation,
   getMyConversations,
@@ -28,6 +31,11 @@ router.post(
   "/file",
   upload.single("file"),
   sendFileMessage,
+);
+router.post(
+  "/voice",
+  voiceUpload.single("file"),
+  sendVoiceMessage,
 );
 
 router.post("/", sendMessage);
