@@ -17,12 +17,13 @@ import { Route as MeetingsRouteImport } from './routes/meetings'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as CirclesIndexRouteImport } from './routes/circles.index'
 import { Route as CirclesCircleIdRouteImport } from './routes/circles.$circleId'
 import { Route as MeetingMeetingIdRouteImport } from './routes/meeting.$meetingId'
+import { Route as SuperadminIndexRouteImport } from './routes/superadmin.index'
+import { Route as SuperadminLoginRouteImport } from './routes/superadmin.login'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,20 +65,15 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SuperadminRoute = SuperadminRouteImport.update({
-  id: '/superadmin',
-  path: '/superadmin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AdminRoute,
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CirclesIndexRoute = CirclesIndexRouteImport.update({
   id: '/circles/',
@@ -94,6 +90,16 @@ const MeetingMeetingIdRoute = MeetingMeetingIdRouteImport.update({
   path: '/meeting/$meetingId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuperadminIndexRoute = SuperadminIndexRouteImport.update({
+  id: '/superadmin/',
+  path: '/superadmin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperadminLoginRoute = SuperadminLoginRouteImport.update({
+  id: '/superadmin/login',
+  path: '/superadmin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -104,12 +110,13 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
-  '/superadmin': typeof SuperadminRoute
   '/admin/login': typeof AdminLoginRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
+  '/superadmin/login': typeof SuperadminLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/circles/': typeof CirclesIndexRoute
+  '/superadmin/': typeof SuperadminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -120,12 +127,13 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
-  '/superadmin': typeof SuperadminRoute
   '/admin/login': typeof AdminLoginRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
+  '/superadmin/login': typeof SuperadminLoginRoute
   '/admin': typeof AdminIndexRoute
   '/circles': typeof CirclesIndexRoute
+  '/superadmin': typeof SuperadminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -137,12 +145,13 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/saved': typeof SavedRoute
   '/settings': typeof SettingsRoute
-  '/superadmin': typeof SuperadminRoute
   '/admin/login': typeof AdminLoginRoute
   '/circles/$circleId': typeof CirclesCircleIdRoute
   '/meeting/$meetingId': typeof MeetingMeetingIdRoute
+  '/superadmin/login': typeof SuperadminLoginRoute
   '/admin/': typeof AdminIndexRoute
   '/circles/': typeof CirclesIndexRoute
+  '/superadmin/': typeof SuperadminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -155,12 +164,13 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
-    | '/superadmin'
     | '/admin/login'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
+    | '/superadmin/login'
     | '/admin/'
     | '/circles/'
+    | '/superadmin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -171,12 +181,13 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
-    | '/superadmin'
     | '/admin/login'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
+    | '/superadmin/login'
     | '/admin'
     | '/circles'
+    | '/superadmin'
   id:
     | '__root__'
     | '/'
@@ -187,12 +198,13 @@ export interface FileRouteTypes {
     | '/messages'
     | '/saved'
     | '/settings'
-    | '/superadmin'
     | '/admin/login'
     | '/circles/$circleId'
     | '/meeting/$meetingId'
+    | '/superadmin/login'
     | '/admin/'
     | '/circles/'
+    | '/superadmin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -204,11 +216,13 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   SavedRoute: typeof SavedRoute
   SettingsRoute: typeof SettingsRoute
-  SuperadminRoute: typeof SuperadminRoute
+  AdminLoginRoute: typeof AdminLoginRoute
   CirclesCircleIdRoute: typeof CirclesCircleIdRoute
   MeetingMeetingIdRoute: typeof MeetingMeetingIdRoute
+  SuperadminLoginRoute: typeof SuperadminLoginRoute
   AdminIndexRoute: typeof AdminIndexRoute
   CirclesIndexRoute: typeof CirclesIndexRoute
+  SuperadminIndexRoute: typeof SuperadminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -269,13 +283,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/superadmin': {
-      id: '/superadmin'
-      path: '/superadmin'
-      fullPath: '/superadmin'
-      preLoaderRoute: typeof SuperadminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
@@ -285,10 +292,10 @@ declare module '@tanstack/react-router' {
     }
     '/admin/login': {
       id: '/admin/login'
-      path: '/login'
+      path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof rootRouteImport
     }
     '/circles/': {
       id: '/circles/'
@@ -311,6 +318,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeetingMeetingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/superadmin/': {
+      id: '/superadmin/'
+      path: '/superadmin'
+      fullPath: '/superadmin/'
+      preLoaderRoute: typeof SuperadminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/superadmin/login': {
+      id: '/superadmin/login'
+      path: '/superadmin/login'
+      fullPath: '/superadmin/login'
+      preLoaderRoute: typeof SuperadminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -323,11 +344,13 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   SavedRoute: SavedRoute,
   SettingsRoute: SettingsRoute,
-  SuperadminRoute: SuperadminRoute,
+  AdminLoginRoute: AdminLoginRoute,
   CirclesCircleIdRoute: CirclesCircleIdRoute,
   MeetingMeetingIdRoute: MeetingMeetingIdRoute,
+  SuperadminLoginRoute: SuperadminLoginRoute,
   AdminIndexRoute: AdminIndexRoute,
   CirclesIndexRoute: CirclesIndexRoute,
+  SuperadminIndexRoute: SuperadminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

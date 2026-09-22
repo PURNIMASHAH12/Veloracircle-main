@@ -18,7 +18,7 @@ import {
 import { VeloraLogo } from "@/components/velora/logo";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/superadmin")({
+export const Route = createFileRoute("/superadmin/")({
   component: SuperadminPage,
 });
 
