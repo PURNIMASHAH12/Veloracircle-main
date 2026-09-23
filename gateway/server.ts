@@ -2,11 +2,12 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { createProxyMiddleware } from "http-proxy-middleware";
+import { loadShedding } from "./middleware/loadShedding";
 
 dotenv.config();
 
 const app = express();
-
+app.use(loadShedding);
 const PORT = process.env.PORT || 4000;
 
 const AUTH_SERVICE_URL =
