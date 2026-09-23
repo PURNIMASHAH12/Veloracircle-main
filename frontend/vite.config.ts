@@ -10,7 +10,7 @@ import tsConfigPaths from "vite-tsconfig-paths";
 
 import { nitro } from "nitro/vite";
 
-import basicSsl from "@vitejs/plugin-basic-ssl";
+import fs from "node:fs";
 
 export default defineConfig(({ command }) => ({
   plugins: [
@@ -28,8 +28,6 @@ export default defineConfig(({ command }) => ({
 
     viteReact(),
 
-    basicSsl(),
-
     command === "build"
       ? nitro()
       : undefined,
@@ -38,6 +36,10 @@ export default defineConfig(({ command }) => ({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    https: {
+  key: fs.readFileSync("./certs/localhost-key.pem"),
+  cert: fs.readFileSync("./certs/localhost.pem"),
+},
 
     proxy: {
       "/api": {
