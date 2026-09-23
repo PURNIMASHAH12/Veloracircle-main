@@ -355,13 +355,13 @@ export function AppShell({
           </div>
         </header>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           <main
             className={cn(
-              "min-h-0 min-w-0 flex-1 overflow-hidden",
+              "min-h-0 min-w-0 flex-1 overflow-y-auto",
               flush
                 ? ""
-                : "px-4 pt-5 pb-24 sm:px-6 lg:pb-8",
+                : "px-4 pt-5 pb-28 sm:px-6 lg:pb-8",
             )}
           >
             {children}

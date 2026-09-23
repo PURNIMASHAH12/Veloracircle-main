@@ -6,6 +6,10 @@ import Message from "../models/Message";
 import Conversation from "../models/Conversation";
 import { io } from "../server";
 import { getIO } from "../socket";
+import {
+    encryptMessage,
+    decryptMessage,
+} from "../services/EncryptionService";
 interface AuthRequest extends Request {
     user?: {
         id: string;
@@ -142,7 +146,7 @@ export const sendMessage = async (
         const message = await Message.create({
             conversation: conversationId,
             sender: user.id,
-            text: cleanText,
+            text: encryptMessage(cleanText),
         });
 
         const populatedMessage =
@@ -150,17 +154,35 @@ export const sendMessage = async (
                 "sender",
                 "name email",
             );
+
+        if (!populatedMessage) {
+            res.status(500).json({
+                message: "Message could not be loaded",
+            });
+            return;
+        }
+
+        const realtimeMessage =
+            populatedMessage.toObject();
+
+        if (realtimeMessage.text) {
+            realtimeMessage.text =
+                decryptMessage(
+                    realtimeMessage.text,
+                );
+        }
+
         const io = getIO();
 
         io.to(
             `conversation:${conversationId}`,
         ).emit(
             "newMessage",
-            populatedMessage,
+            realtimeMessage,
         );
 
         res.status(201).json({
-            message: populatedMessage,
+            message: realtimeMessage,
         });
     } catch (error) {
         console.error(
@@ -242,8 +264,24 @@ export const getMessages = async (
                 .sort({ createdAt: 1 })
                 .limit(200);
 
+        const decryptedMessages = messages.map(
+            (message) => {
+                const messageObject =
+                    message.toObject();
+
+                if (messageObject.text) {
+                    messageObject.text =
+                        decryptMessage(
+                            messageObject.text,
+                        );
+                }
+
+                return messageObject;
+            },
+        );
+
         res.status(200).json({
-            data: messages,
+            data: decryptedMessages,
         });
     } catch (error) {
         console.error(

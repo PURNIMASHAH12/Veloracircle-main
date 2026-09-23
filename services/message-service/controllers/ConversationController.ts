@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 
 import Conversation from "../models/Conversation";
 import Message from "../models/Message";
+import { decryptMessage } from "../services/EncryptionService";
 
 const getUserFromToken = (
   req: Request,
@@ -211,24 +212,28 @@ export const getMyConversations = async (
             otherUser:
               otherParticipant
                 ? {
-                    id: otherParticipant._id,
-                    name:
-                      otherParticipant.name,
-                    email:
-                      otherParticipant.email,
-                  }
+                  id: otherParticipant._id,
+                  name:
+                    otherParticipant.name,
+                  email:
+                    otherParticipant.email,
+                }
                 : null,
 
             latestMessage:
               latestMessage
                 ? {
-                    text:
-                      latestMessage.text,
-                    createdAt:
-                      latestMessage.createdAt,
-                    sender:
-                      latestMessage.sender,
-                  }
+                  text:
+                    latestMessage.text
+                      ? decryptMessage(
+                        latestMessage.text,
+                      )
+                      : "",
+                  createdAt:
+                    latestMessage.createdAt,
+                  sender:
+                    latestMessage.sender,
+                }
                 : null,
           };
         },

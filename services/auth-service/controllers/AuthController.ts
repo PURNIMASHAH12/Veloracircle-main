@@ -193,10 +193,12 @@ export const login = async (
       purpose: "login",
     });
 
-    await sendOtpEmail({
+    sendOtpEmail({
       email: user.email,
       otp,
       purpose: "login",
+    }).catch((error) => {
+      console.error("Login OTP email error:", error);
     });
 
     res.status(200).json({
@@ -384,15 +386,15 @@ export const resendOtp = async (
       return;
     }
     if (
-  purpose === "login" &&
-  user.role === "admin" &&
-  !user.isActive
-) {
-  res.status(403).json({
-    message: "Your account has been disabled",
-  });
-  return;
-}
+      purpose === "login" &&
+      user.role === "admin" &&
+      !user.isActive
+    ) {
+      res.status(403).json({
+        message: "Your account has been disabled",
+      });
+      return;
+    }
 
     const latestOtp = await Otp.findOne({
       userId: user._id,
@@ -636,11 +638,11 @@ export const adminLogin = async (
       return;
     }
     if (!user.isActive) {
-  res.status(403).json({
-    message: "Your account has been disabled",
-  });
-  return;
-}
+      res.status(403).json({
+        message: "Your account has been disabled",
+      });
+      return;
+    }
 
     const isPasswordValid = await bcrypt.compare(
       password,
