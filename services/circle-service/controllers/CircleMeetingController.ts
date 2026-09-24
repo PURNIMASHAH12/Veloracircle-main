@@ -334,9 +334,7 @@ export const getCircleMeetings =
                               String(req.params.circleId),
                         ),
                 })
-                    .select(
-                        "title description scheduledAt createdBy status createdAt updatedAt",
-                    )
+                   .select("circle title description scheduledAt createdBy status createdAt updatedAt")
                     .sort({
                         scheduledAt: 1,
                     });

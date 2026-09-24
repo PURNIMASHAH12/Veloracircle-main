@@ -26,11 +26,11 @@ const navigation = [
     to: "/circles",
     icon: Users,
   },
-  {
-    label: "Meetings",
-    to: "/meetings",
-    icon: Video,
-  },
+  // {
+  //   label: "Meetings",
+  //   to: "/meetings",
+  //   icon: Video,
+  // },
 ];
 
 export function Header() {

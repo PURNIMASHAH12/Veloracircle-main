@@ -1474,7 +1474,7 @@ function MessagesPage() {
             </div>
           </header>
 
-          <div className="min-h-0 flex flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {showMessageSearch ? (
               <div className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-2 sm:px-6">
                 <Search className="text-muted-foreground h-4 w-4 shrink-0" />
@@ -1843,13 +1843,21 @@ function MessagesPage() {
         "ringing" ? (
         <IncomingCall
           callState={callState}
-          onAccept={() => {
-            void acceptCall();
+          onAccept={async () => {
+            console.log(
+              "CALL DEBUG - Accepting call:",
+              callState.callId,
+            );
+
+            await acceptCall();
+
+            console.log(
+              "CALL DEBUG - Call accepted successfully",
+            );
           }}
           onReject={rejectCall}
         />
       ) : null}
-
       {callState.status !==
         "idle" &&
         callState.status !==

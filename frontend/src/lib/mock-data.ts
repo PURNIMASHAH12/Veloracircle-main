@@ -169,6 +169,10 @@ export type Meeting = {
   privacy: string;
   duration: string;
   group: "today" | "upcoming" | "past";
+
+  // Optional real meeting details
+  description?: string;
+  status?: "scheduled" | "cancelled" | "completed";
 };
 
 export const meetings: Meeting[] = [

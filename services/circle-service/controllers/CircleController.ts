@@ -594,7 +594,113 @@ export const removeMember =
       });
     }
   };
+export const getCircleCallMembers = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = getUserFromToken(req);
 
+    if (!user) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const circleId = req.params.circleId;
+
+if (Array.isArray(circleId)) {
+  res.status(400).json({
+    message: "Invalid circle ID",
+  });
+  return;
+}
+    if (!circleId) {
+      res.status(400).json({
+        message: "Circle ID is required",
+      });
+      return;
+    }
+
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        circleId,
+      )
+    ) {
+      res.status(400).json({
+        message: "Invalid circle ID",
+      });
+      return;
+    }
+
+    const circle =
+      await Circle.findById(circleId).select(
+        "members",
+      );
+
+    if (!circle) {
+      res.status(404).json({
+        message: "Circle not found",
+      });
+      return;
+    }
+
+    const currentUserId =
+      new mongoose.Types.ObjectId(
+        user.id,
+      );
+
+    const isMember =
+      circle.members.some(
+        (memberId) =>
+          memberId.toString() ===
+          currentUserId.toString(),
+      );
+
+    if (!isMember) {
+      res.status(403).json({
+        message:
+          "You are not a member of this circle",
+      });
+      return;
+    }
+
+    /*
+     * Return only the IDs required to send
+     * private call invitations.
+     *
+     * Names, emails, roles and the normal
+     * member directory are intentionally
+     * not returned.
+     */
+    const memberIds =
+      circle.members
+        .filter(
+          (memberId) =>
+            memberId.toString() !==
+            currentUserId.toString(),
+        )
+        .map(
+          (memberId) =>
+            memberId.toString(),
+        );
+
+    res.status(200).json({
+      memberIds,
+    });
+  } catch (error) {
+    console.error(
+      "Get circle call members error:",
+      error,
+    );
+
+    res.status(500).json({
+      message:
+        "Failed to prepare circle meeting",
+    });
+  }
+};
 export default {
   createCircle,
   getMyCircles,

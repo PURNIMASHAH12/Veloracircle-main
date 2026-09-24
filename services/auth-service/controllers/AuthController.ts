@@ -761,3 +761,81 @@ export const superadminLogin = async (
     });
   }
 };
+// =========================
+// GET CURRENT USER
+// =========================
+
+export const getCurrentUser = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      res.status(401).json({
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    if (!authHeader.startsWith("Bearer ")) {
+      res.status(401).json({
+        message: "Invalid authorization format",
+      });
+      return;
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+      res.status(401).json({
+        message: "Authentication token is required",
+      });
+      return;
+    }
+
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET,
+    ) as {
+      userId: string;
+    };
+
+    const user = await User.findById(
+      decoded.userId,
+    ).select("name email role isActive");
+
+    if (!user) {
+      res.status(401).json({
+        message: "User account not found",
+      });
+      return;
+    }
+
+    if (!user.isActive) {
+      res.status(403).json({
+        message: "Your account has been disabled",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Get current user error:",
+      error,
+    );
+
+    res.status(401).json({
+      message: "Invalid or expired token",
+    });
+  }
+};

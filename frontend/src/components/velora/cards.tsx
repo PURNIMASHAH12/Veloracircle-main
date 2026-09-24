@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Clock,
@@ -14,6 +15,13 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,71 +95,133 @@ export function MeetingCard({
   meeting: Meeting;
   past?: boolean;
 }) {
-  return (
-    <div className="surface-panel hover:border-border-strong rounded-2xl p-5 transition-all duration-200 hover:shadow-[var(--shadow-elevate)]">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold">
-            {meeting.title}
-          </h3>
+  const [summaryOpen, setSummaryOpen] =
+    React.useState(false);
 
-          <p className="text-muted-foreground mt-1 truncate text-xs">
-            {meeting.day} ·{" "}
-            {meeting.time} ·{" "}
-            {meeting.duration}
-          </p>
+  return (
+    <>
+      <div className="surface-panel hover:border-border-strong rounded-2xl p-5 transition-all duration-200 hover:shadow-[var(--shadow-elevate)]">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">
+              {meeting.title}
+            </h3>
+
+            <p className="text-muted-foreground mt-1 truncate text-xs">
+              {meeting.day} ·{" "}
+              {meeting.time} ·{" "}
+              {meeting.duration}
+            </p>
+          </div>
+
+          <PrivacyBadge
+            label={meeting.privacy}
+            tone={
+              past
+                ? "muted"
+                : "accent"
+            }
+          />
         </div>
 
-        <PrivacyBadge
-          label={meeting.privacy}
-          tone={
-            past
-              ? "muted"
-              : "accent"
-          }
-        />
-      </div>
+        <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <p className="text-muted-foreground truncate text-[11px]">
+            Host · {meeting.host}
+          </p>
 
-      <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-        <p className="text-muted-foreground truncate text-[11px]">
-          Host · {meeting.host}
-        </p>
-
-        {past ? (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              toast(
-                "Meeting summary",
-                {
-                  description:
-                    meeting.title,
-                },
-              )
-            }
-          >
-            View summary
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            asChild
-          >
-            <Link
-              to="/meeting/$meetingId"
-              params={{
-                meetingId:
-                  meeting.id,
-              }}
+          {past ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                setSummaryOpen(true)
+              }
             >
-              <Video className="h-4 w-4" />
-              Join
-            </Link>
-          </Button>
-        )}
+              View summary
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              asChild
+            >
+              <Link
+                to="/meeting/$meetingId"
+                params={{
+                  meetingId:
+                    meeting.id,
+                }}
+              >
+                <Video className="h-4 w-4" />
+                Join
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
+
+      <Dialog
+        open={summaryOpen}
+        onOpenChange={
+          setSummaryOpen
+        }
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Meeting Summary
+            </DialogTitle>
+
+            <DialogDescription>
+              Details of the completed meeting.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm font-semibold">
+                {meeting.title}
+              </p>
+
+              <p className="text-muted-foreground mt-1 text-xs">
+                {meeting.day} ·{" "}
+                {meeting.time}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+                Description
+              </p>
+
+              <p className="text-sm leading-relaxed">
+                {meeting.description ||
+                  "No description provided."}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+                Status
+              </p>
+
+              <p className="text-sm">
+                {meeting.status ===
+                  "completed"
+                  ? "Completed"
+                  : meeting.status
+                    ? meeting.status
+                      .charAt(0)
+                      .toUpperCase() +
+                    meeting.status.slice(
+                      1,
+                    )
+                    : "Completed"}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

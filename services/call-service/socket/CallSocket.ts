@@ -166,5 +166,30 @@ export const registerCallSocket = (
         },
       );
     },
-  );
+  );socket.on(
+  "call:reaction",
+  ({
+    callId,
+    reaction,
+    targetUserIds,
+  }: {
+    callId: string;
+    reaction: string;
+    targetUserIds: string[];
+  }) => {
+    targetUserIds.forEach(
+      (userId) => {
+        io.to(`user:${userId}`).emit(
+          "call:reaction",
+          {
+            callId,
+            userId:
+              socket.data.userId,
+            reaction,
+          },
+        );
+      },
+    );
+  },
+);
 };

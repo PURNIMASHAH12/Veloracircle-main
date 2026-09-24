@@ -527,13 +527,13 @@ function SavedPage() {
             ARCHIVE
         ================================================= */}
 
-        <div className="mt-10">
+        {/* <div className="mt-10">
           <EmptyState
             icon={FileText}
             title="Archive is empty"
             description="Older saved items you archive will appear in this section."
           />
-        </div>
+        </div> */}
       </div>
     </AppShell>
   );

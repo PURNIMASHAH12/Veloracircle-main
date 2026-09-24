@@ -101,11 +101,48 @@ const initialCallState: CallState = {
 export const useCall = () => {
     const [callState, setCallState] =
         useState<CallState>(initialCallState);
+
     useEffect(() => {
         connectCallSocket();
 
+        const handleConnect = () => {
+            console.log(
+                "CALL SOCKET CONNECTED:",
+                socket.id,
+            );
+        };
+
+        const handleDisconnect = (
+            reason: string,
+        ) => {
+            console.log(
+                "CALL SOCKET DISCONNECTED:",
+                reason,
+            );
+        };
+
+        const handleConnectError = (
+            error: Error,
+        ) => {
+            console.error(
+                "CALL SOCKET ERROR:",
+                error,
+            );
+        };
+
+        socket.on("connect", handleConnect);
+        socket.on("disconnect", handleDisconnect);
+        socket.on("connect_error", handleConnectError);
+
         return () => {
-            socket.disconnect();
+            socket.off("connect", handleConnect);
+            socket.off("disconnect", handleDisconnect);
+            socket.off(
+                "connect_error",
+                handleConnectError,
+            );
+
+            // DO NOT disconnect the shared call socket here.
         };
     }, []);
 
@@ -115,6 +152,28 @@ export const useCall = () => {
      */
     const localStreamRef =
         useRef<MediaStream | null>(null);
+
+    /*
+     * Screen-sharing stream.
+     */
+    const screenStreamRef =
+        useRef<MediaStream | null>(null);
+
+    /*
+     * Original camera track.
+     *
+     * This is temporarily stored while the
+     * screen is being shared.
+     */
+    const cameraTrackRef =
+        useRef<MediaStreamTrack | null>(null);
+
+    /*
+     * Whether the current user is sharing
+     * their screen.
+     */
+    const [isScreenSharing, setIsScreenSharing] =
+        useState(false);
 
     /*
      * Existing 1-to-1 remote stream ref.
@@ -391,6 +450,22 @@ export const useCall = () => {
 
         peerConnectionRef.current = null;
 
+        /*
+         * Stop screen-sharing tracks if
+         * screen sharing is active.
+         */
+        screenStreamRef.current
+            ?.getTracks()
+            .forEach((track) => {
+                if (track.readyState !== "ended") {
+                    track.stop();
+                }
+            });
+
+        screenStreamRef.current = null;
+        cameraTrackRef.current = null;
+        setIsScreenSharing(false);
+
         stopMediaStream(
             localStreamRef.current,
         );
@@ -518,6 +593,9 @@ export const useCall = () => {
                     crypto.randomUUID();
 
                 callIdRef.current = callId;
+                socket.emit("call:join-room", {
+                    callId,
+                });
 
                 const currentUser =
                     JSON.parse(
@@ -583,6 +661,189 @@ export const useCall = () => {
     );
 
     /**
+     * Start a new meeting with multiple users.
+     *
+     * The first selected user receives a normal
+     * incoming call. The remaining users receive
+     * group invitations to the same call.
+     */
+    const startGroupCall = useCallback(
+        async (
+            type: CallType,
+            users: {
+                id: string;
+                name: string;
+            }[],
+        ) => {
+            if (users.length === 0) {
+                return;
+            }
+
+            try {
+                const stream =
+                    type === "video"
+                        ? await getVideoStream()
+                        : await getAudioStream();
+
+                localStreamRef.current = stream;
+
+                const firstUser = users[0];
+
+                if (!firstUser) {
+                    cleanupCall();
+                    return;
+                }
+
+                remoteUserIdRef.current =
+                    firstUser.id;
+
+                const peerConnection =
+                    createPeerConnection(
+                        (candidate) => {
+                            const currentUser =
+                                JSON.parse(
+                                    localStorage.getItem(
+                                        "user",
+                                    ) || "{}",
+                                );
+
+                            socket.emit(
+                                "call:ice-candidate",
+                                {
+                                    userId:
+                                        firstUser.id,
+                                    senderId:
+                                        currentUser.id ||
+                                        currentUser._id,
+                                    candidate,
+                                },
+                            );
+                        },
+                        (event) => {
+                            const remoteStream =
+                                event.streams[0];
+
+                            if (remoteStream) {
+                                remoteStreamRef.current =
+                                    remoteStream;
+
+                                remoteStreamsRef.current.set(
+                                    firstUser.id,
+                                    remoteStream,
+                                );
+
+                                setCallState(
+                                    (previous) => ({
+                                        ...previous,
+                                        status:
+                                            "connected",
+                                    }),
+                                );
+                            }
+                        },
+                    );
+
+                stream
+                    .getTracks()
+                    .forEach((track) => {
+                        peerConnection.addTrack(
+                            track,
+                            stream,
+                        );
+                    });
+
+                peerConnectionRef.current =
+                    peerConnection;
+
+                peerConnectionsRef.current.set(
+                    firstUser.id,
+                    peerConnection,
+                );
+
+                const offer =
+                    await peerConnection.createOffer();
+
+                await peerConnection.setLocalDescription(
+                    offer,
+                );
+
+                const callId =
+                    crypto.randomUUID();
+
+                callIdRef.current = callId;
+
+                const currentUser =
+                    JSON.parse(
+                        localStorage.getItem(
+                            "user",
+                        ) || "{}",
+                    );
+
+                const currentUserName =
+                    currentUser.name ||
+                    "Velora User";
+
+                /*
+                 * Store every selected user in the
+                 * local call state.
+                 */
+                setCallState({
+                    status: "calling",
+                    type,
+                    callId,
+                    participants: users,
+                    isMuted: false,
+                    isCameraOff:
+                        type === "audio",
+                });
+
+                /*
+                 * First participant receives the
+                 * normal incoming call with WebRTC offer.
+                 */
+                socket.emit("call:start", {
+                    callId,
+                    targetUserId:
+                        firstUser.id,
+                    callerName:
+                        currentUserName,
+                    type,
+                    offer,
+                });
+
+                /*
+                 * Remaining participants receive
+                 * invitations to the same call.
+                 */
+                users.slice(1).forEach(
+                    (user) => {
+                        socket.emit(
+                            "call:invite",
+                            {
+                                callId,
+                                targetUserId:
+                                    user.id,
+                                callerName:
+                                    currentUserName,
+                                type,
+                            },
+                        );
+                    },
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to start group call:",
+                    error,
+                );
+
+                cleanupCall();
+                setCallState(initialCallState);
+            }
+        },
+        [cleanupCall],
+    );
+
+    /**
      * Accept a normal incoming 1-to-1 call
      * OR accept an invitation to an existing
      * group call.
@@ -616,7 +877,9 @@ export const useCall = () => {
 
                     callIdRef.current =
                         groupInvite.callId;
-
+                    socket.emit("call:join-room", {
+                        callId: groupInvite.callId,
+                    });
                     setCallState((previous) => ({
                         ...previous,
                         status: "calling",
@@ -961,6 +1224,241 @@ export const useCall = () => {
             }),
         );
     }, []);
+
+    /**
+     * Stop screen sharing and restore
+     * the original camera track.
+     *
+     * IMPORTANT:
+     * This function is declared before
+     * startScreenShare because startScreenShare
+     * calls this function when the browser's
+     * screen-sharing session ends.
+     */
+    const stopScreenShare = useCallback(
+        async () => {
+            const localStream =
+                localStreamRef.current;
+
+            const screenStream =
+                screenStreamRef.current;
+
+            const cameraTrack =
+                cameraTrackRef.current;
+
+            if (!localStream || !cameraTrack) {
+                return;
+            }
+
+            /*
+             * Replace the screen track with
+             * the original camera track on
+             * every active peer connection.
+             */
+            peerConnectionsRef.current.forEach(
+                (peerConnection) => {
+                    const sender =
+                        peerConnection
+                            .getSenders()
+                            .find(
+                                (item) =>
+                                    item.track?.kind ===
+                                    "video",
+                            );
+
+                    if (sender) {
+                        void sender.replaceTrack(
+                            cameraTrack,
+                        );
+                    }
+                },
+            );
+
+            /*
+             * Remove and stop the screen track
+             * from the local stream.
+             */
+            const screenTrack =
+                screenStream?.getVideoTracks()[0];
+            console.log(
+                "SCREEN SHARE TRACK:",
+                screenTrack,
+            );
+            if (screenTrack) {
+                localStream.removeTrack(
+                    screenTrack,
+                );
+
+                screenTrack.stop();
+            }
+
+            /*
+             * Put the camera track back into
+             * the local stream.
+             */
+            localStream.addTrack(
+                cameraTrack,
+            );
+
+            /*
+             * Stop every remaining screen-share
+             * track.
+             */
+            screenStream
+                ?.getTracks()
+                .forEach((track) => {
+                    if (
+                        track.readyState !==
+                        "ended"
+                    ) {
+                        track.stop();
+                    }
+                });
+
+            screenStreamRef.current =
+                null;
+
+            cameraTrackRef.current =
+                null;
+
+            setIsScreenSharing(false);
+        },
+        [],
+    );
+
+    /**
+     * Start sharing the user's screen.
+     *
+     * The screen video track replaces the
+     * current camera video track on every
+     * active peer connection.
+     */
+    const startScreenShare = useCallback(
+        async () => {
+            try {
+                /*
+                 * Do not start another screen-share
+                 * session if one is already active.
+                 */
+                if (isScreenSharing) {
+                    return;
+                }
+
+                const localStream =
+                    localStreamRef.current;
+
+                if (!localStream) {
+                    return;
+                }
+
+                /*
+                 * Get the current camera track.
+                 */
+                const cameraTrack =
+                    localStream.getVideoTracks()[0];
+
+                if (!cameraTrack) {
+                    return;
+                }
+
+                /*
+                 * Ask the browser for the screen,
+                 * window, or tab the user wants to share.
+                 */
+                const screenStream =
+                    await navigator.mediaDevices.getDisplayMedia(
+                        {
+                            video: true,
+                            audio: false,
+                        },
+                    );
+
+                const screenTrack =
+                    screenStream.getVideoTracks()[0];
+
+                if (!screenTrack) {
+                    screenStream
+                        .getTracks()
+                        .forEach((track) =>
+                            track.stop(),
+                        );
+
+                    return;
+                }
+
+                /*
+                 * Remember the camera and screen
+                 * streams so they can be restored
+                 * later.
+                 */
+                cameraTrackRef.current =
+                    cameraTrack;
+
+                screenStreamRef.current =
+                    screenStream;
+
+                /*
+                 * Replace the camera track with
+                 * the screen track on every active
+                 * peer connection.
+                 */
+                peerConnectionsRef.current.forEach(
+                    (peerConnection) => {
+                        const sender =
+                            peerConnection
+                                .getSenders()
+                                .find(
+                                    (item) =>
+                                        item.track?.kind ===
+                                        "video",
+                                );
+
+                        if (sender) {
+                            console.log(
+                                "REPLACING CAMERA TRACK WITH SCREEN TRACK",
+                            );
+
+                            void sender.replaceTrack(
+                                screenTrack,
+                            );
+                        }
+                    },
+                );
+
+                /*
+                 * Replace the camera track in the
+                 * local MediaStream as well.
+                 */
+                localStream.removeTrack(
+                    cameraTrack,
+                );
+
+                localStream.addTrack(
+                    screenTrack,
+                );
+
+                setIsScreenSharing(true);
+
+                /*
+                 * If the user clicks the browser's
+                 * "Stop sharing" button, restore
+                 * the camera automatically.
+                 */
+                screenTrack.onended = () => {
+                    void stopScreenShare();
+                };
+            } catch (error) {
+                console.error(
+                    "Failed to start screen sharing:",
+                    error,
+                );
+            }
+        },
+        [
+            isScreenSharing,
+            stopScreenShare,
+        ],
+    );
 
     /**
      * End the current call.
@@ -1557,6 +2055,8 @@ export const useCall = () => {
 
         startCall,
 
+        startGroupCall,
+
         acceptCall,
 
         rejectCall,
@@ -1566,6 +2066,12 @@ export const useCall = () => {
         toggleMute,
 
         toggleCamera,
+
+        startScreenShare,
+
+        stopScreenShare,
+
+        isScreenSharing,
 
         endCall,
     };

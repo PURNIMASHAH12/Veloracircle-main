@@ -2,9 +2,13 @@ import {
   CheckCircle2,
   Lock,
   LogOut,
+  Search,
   ShieldCheck,
+  UserRound,
   Users,
+  Video,
 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   useEffect,
   useState,
@@ -81,7 +85,613 @@ export function PrivacyToggle({
     </div>
   );
 }
+type InstantMeetingUser = {
+  _id: string;
+  name: string;
+  email: string;
+};
 
+type InstantMeetingCircle = {
+  _id: string;
+  name: string;
+};
+
+export function StartInstantMeetingModal({
+  trigger,
+}: {
+  trigger: ReactNode;
+}) {
+  const navigate = useNavigate();
+
+  const [open, setOpen] = useState(false);
+
+  const [meetingType, setMeetingType] = useState<
+    "private" | "circle"
+  >("private");
+
+  const [callType, setCallType] =
+    useState<"audio" | "video">("video");
+
+  const [search, setSearch] = useState("");
+
+  const [users, setUsers] = useState<
+    InstantMeetingUser[]
+  >([]);
+
+  const [selectedUsers, setSelectedUsers] =
+    useState<InstantMeetingUser[]>([]);
+
+  const [circles, setCircles] = useState<
+    InstantMeetingCircle[]
+  >([]);
+
+  const [selectedCircle, setSelectedCircle] =
+    useState("");
+
+  const [loadingUsers, setLoadingUsers] =
+    useState(false);
+
+  const [loadingCircles, setLoadingCircles] =
+    useState(false);
+
+  const [starting, setStarting] =
+    useState(false);
+
+  /*
+   * Load real users when Private Meeting
+   * is selected.
+   */
+  useEffect(() => {
+    if (!open || meetingType !== "private") {
+      return;
+    }
+
+    const query = search.trim();
+
+    if (!query) {
+      setUsers([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function searchUsers() {
+      try {
+        setLoadingUsers(true);
+
+        const token =
+          localStorage.getItem("token");
+
+        const response = await fetch(
+          `/api/users/search?q=${encodeURIComponent(
+            query,
+          )}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            "Failed to search users",
+          );
+        }
+
+        if (!cancelled) {
+          const currentUser =
+            JSON.parse(
+              localStorage.getItem(
+                "user",
+              ) || "{}",
+            );
+
+          const currentUserId =
+            currentUser.id ||
+            currentUser._id;
+
+          setUsers(
+            (data.users || []).filter(
+              (user: InstantMeetingUser) =>
+                user._id !== currentUserId &&
+                user._id !== currentUserId,
+            ),
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Search users error:",
+          error,
+        );
+      } finally {
+        if (!cancelled) {
+          setLoadingUsers(false);
+        }
+      }
+    }
+
+    const timer = window.setTimeout(
+      () => {
+        void searchUsers();
+      },
+      300,
+    );
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, meetingType, search]);
+
+  /*
+   * Load the user's real circles.
+   */
+  useEffect(() => {
+    if (!open || meetingType !== "circle") {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCircles() {
+      try {
+        setLoadingCircles(true);
+
+        const result =
+          await getMyCircles();
+
+        if (!cancelled) {
+          setCircles(result);
+
+          if (result[0]) {
+            setSelectedCircle(
+              result[0]._id,
+            );
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Load circles error:",
+          error,
+        );
+
+        if (!cancelled) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to load circles",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingCircles(false);
+        }
+      }
+    }
+
+    void loadCircles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, meetingType]);
+
+  function toggleUser(
+    user: InstantMeetingUser,
+  ) {
+    setSelectedUsers((previous) => {
+      const exists = previous.some(
+        (item) => item._id === user._id,
+      );
+
+      if (exists) {
+        return previous.filter(
+          (item) => item._id !== user._id,
+        );
+      }
+
+      return [...previous, user];
+    });
+  }
+
+  async function handleStartMeeting() {
+    try {
+      setStarting(true);
+
+      if (
+        meetingType === "private" &&
+        selectedUsers.length === 0
+      ) {
+        toast.error(
+          "Please select at least one user",
+        );
+        return;
+      }
+
+      if (
+        meetingType === "circle" &&
+        !selectedCircle
+      ) {
+        toast.error(
+          "Please select a Circle",
+        );
+        return;
+      }
+
+      /*
+       * Store the selected participants temporarily.
+       *
+       * The meeting page will use the existing
+       * useCall() hook.
+       */
+      sessionStorage.setItem(
+        "instantMeetingType",
+        meetingType,
+      );
+
+      sessionStorage.setItem(
+        "instantMeetingCallType",
+        callType,
+      );
+
+      sessionStorage.setItem(
+        "instantMeetingUsers",
+        JSON.stringify(
+          selectedUsers.map((user) => ({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+          })),
+        ),
+      );
+
+      if (meetingType === "circle") {
+        sessionStorage.setItem(
+          "instantMeetingCircleId",
+          selectedCircle,
+        );
+      } else {
+        sessionStorage.removeItem(
+          "instantMeetingCircleId",
+        );
+      }
+
+      setOpen(false);
+
+      navigate({
+        to: "/meeting/$meetingId",
+        params: {
+          meetingId: `instant-${Date.now()}`,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Start instant meeting error:",
+        error,
+      );
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to start meeting",
+      );
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value);
+
+        if (!value) {
+          setSearch("");
+          setUsers([]);
+          setSelectedUsers([]);
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
+
+      <DialogContent className="glass max-h-[90dvh] overflow-y-auto sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Video
+              className="text-primary h-4 w-4"
+              aria-hidden
+            />
+            Start Instant Meeting
+          </DialogTitle>
+
+          <DialogDescription>
+            Choose who should be invited to the
+            meeting.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          {/* Meeting type */}
+          <div className="space-y-2">
+            <Label>Meeting type</Label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={
+                  meetingType === "private"
+                    ? "default"
+                    : "outline"
+                }
+                className="h-auto justify-start py-4"
+                onClick={() =>
+                  setMeetingType("private")
+                }
+              >
+                <UserRound className="mr-2 h-4 w-4" />
+
+                <span className="text-left">
+                  <span className="block">
+                    Private Meeting
+                  </span>
+
+                  <span className="text-muted-foreground block text-[11px]">
+                    Select specific users
+                  </span>
+                </span>
+              </Button>
+
+              <Button
+                type="button"
+                variant={
+                  meetingType === "circle"
+                    ? "default"
+                    : "outline"
+                }
+                className="h-auto justify-start py-4"
+                onClick={() =>
+                  setMeetingType("circle")
+                }
+              >
+                <Users className="mr-2 h-4 w-4" />
+
+                <span className="text-left">
+                  <span className="block">
+                    Circle Meeting
+                  </span>
+
+                  <span className="text-muted-foreground block text-[11px]">
+                    Use a Circle
+                  </span>
+                </span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Call type */}
+          <div className="space-y-2">
+            <Label>Call type</Label>
+
+            <Select
+              value={callType}
+              onValueChange={(value) =>
+                setCallType(
+                  value as "audio" | "video",
+                )
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+
+              <SelectContent>
+                <SelectItem value="video">
+                  Video meeting
+                </SelectItem>
+
+                <SelectItem value="audio">
+                  Audio meeting
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* PRIVATE */}
+          {meetingType === "private" && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>
+                  Select participants
+                </Label>
+
+                <div className="relative">
+                  <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+
+                  <Input
+                    className="pl-9"
+                    placeholder="Search by name or email..."
+                    value={search}
+                    onChange={(event) =>
+                      setSearch(
+                        event.target.value,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              {loadingUsers && (
+                <p className="text-muted-foreground text-xs">
+                  Searching users...
+                </p>
+              )}
+
+              {!loadingUsers &&
+                search.trim() &&
+                users.length === 0 && (
+                  <p className="text-muted-foreground text-xs">
+                    No users found.
+                  </p>
+                )}
+
+              <div className="max-h-52 space-y-2 overflow-y-auto">
+                {users.map((user) => {
+                  const selected =
+                    selectedUsers.some(
+                      (item) =>
+                        item._id === user._id,
+                    );
+
+                  return (
+                    <button
+                      key={user._id}
+                      type="button"
+                      className={`border-border flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${selected
+                        ? "bg-primary/10 border-primary"
+                        : "hover:bg-surface-2"
+                        }`}
+                      onClick={() =>
+                        toggleUser(user)
+                      }
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="bg-primary/10 text-primary grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold">
+                          {user.name
+                            .split(/\s+/)
+                            .map(
+                              (part) =>
+                                part[0],
+                            )
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {user.name}
+                          </p>
+
+                          <p className="text-muted-foreground truncate text-xs">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selected && (
+                        <CheckCircle2 className="text-primary h-5 w-5 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedUsers.length > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {selectedUsers.length} participant
+                  {selectedUsers.length !== 1
+                    ? "s"
+                    : ""}{" "}
+                  selected
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* CIRCLE */}
+          {meetingType === "circle" && (
+            <div className="space-y-2">
+              <Label>
+                Select Circle
+              </Label>
+
+              <Select
+                value={selectedCircle}
+                onValueChange={
+                  setSelectedCircle
+                }
+                disabled={
+                  loadingCircles ||
+                  circles.length === 0
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      loadingCircles
+                        ? "Loading Circles..."
+                        : "Select a Circle"
+                    }
+                  />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {circles.map((circle) => (
+                    <SelectItem
+                      key={circle._id}
+                      value={circle._id}
+                    >
+                      {circle.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {!loadingCircles &&
+                circles.length === 0 && (
+                  <p className="text-muted-foreground text-xs">
+                    You are not a member of any
+                    Circle.
+                  </p>
+                )}
+
+              <p className="text-muted-foreground text-xs">
+                Circle membership is handled
+                privately. Other members are not
+                displayed here.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            disabled={starting}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            onClick={() => {
+              void handleStartMeeting();
+            }}
+            disabled={
+              starting ||
+              (meetingType === "private" &&
+                selectedUsers.length === 0) ||
+              (meetingType === "circle" &&
+                !selectedCircle)
+            }
+          >
+            {starting
+              ? "Starting..."
+              : "Start Meeting"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 export function CreateCircleModal({
   trigger,
 }: {
