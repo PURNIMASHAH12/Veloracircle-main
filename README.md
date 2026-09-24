@@ -1,153 +1,314 @@
 # Velora Circle
 
-**Velora Circle** is a secure company communication platform designed for private conversations, team collaboration, and controlled information sharing.
+**Velora Circle** is a secure, privacy-focused communication and collaboration platform designed for organizations and teams.
 
-The application provides authenticated messaging, private circles, role-based access control, secure authentication, real-time communication, and privacy-focused conversation management.
+It provides private messaging, group communication through Circles, real-time audio/video meetings, file sharing, notifications, and role-based administration. The system is built using a **React + TypeScript frontend** and a **Node.js microservices backend** with an **API Gateway**.
 
 ---
 
 ## 🚀 Features
 
-### 🔐 Authentication & Security
-
-* User registration and login
-* JWT-based authentication
-* Password hashing
-* Protected API routes
-* Token validation and expiration handling
-* Input validation using Zod
-* Role-Based Access Control (RBAC)
-* Login rate limiting
-* Secure access to protected resources
-
-### 💬 Private Messaging
-
-* One-to-one conversations
-* Private Circle conversations
-* Send and receive messages
-* Persistent message storage
-* Message validation
-* Conversation history
-* Real-time communication support
-
-### 👥 Private Circles
-
-* Create private circles
-* Add members to circles
-* Circle-based conversations
-* Privacy-focused member visibility
-* Circle members cannot freely view other members' information
-* Administrative access to circle membership
-
-### 📞 Communication
-
-* Real-time communication using Socket.IO
-* Voice/video calling functionality
-* Incoming call notifications
-* Call signaling through WebSockets
-
-### 👤 User & Role Management
-
-* User authentication
-* User roles
-* Admin-controlled functionality
-* Protected administrative routes
-* Permission-based API access
-
----
-
-## 🛡️ Security Layer
-
-Velora Circle includes multiple security mechanisms:
-
-```text
-                Velora Circle
-                     │
-                     ▼
-             JWT Authentication
-                     │
-                     ▼
-             Password Hashing
-                     │
-                     ▼
-              Input Validation
-                     │
-                     ▼
-            Role-Based Access
-                     │
-                     ▼
-              Rate Limiting
-                     │
-                     ▼
-          Protected API Routes
-```
-
-The backend validates authentication and authorization before allowing access to protected resources.
+* 🔐 Secure user authentication
+* 🔑 JWT-based authentication and authorization
+* 🔒 Password hashing
+* 🛡️ Role-Based Access Control (RBAC)
+* ✅ Request validation using Zod
+* 🚦 Rate limiting
+* 🔒 HTTPS/TLS support
+* 💬 Private one-to-one messaging
+* 👥 Circle-based group communication
+* 🔏 Privacy-focused Circle member visibility
+* 📹 Real-time audio/video meetings
+* 🖥️ Screen sharing
+* 🎤 Microphone and camera controls
+* 📁 File sharing
+* 🔔 Notification service
+* ⚡ Real-time communication using Socket.IO
+* 🌐 WebRTC-based peer-to-peer media communication
+* 🚪 API Gateway for centralized backend access
+* 🛑 API Gateway load shedding
+* 🧩 Microservices-based backend architecture
 
 ---
 
 ## 🏗️ System Architecture
 
+Velora Circle follows a microservices architecture.
+
 ```text
-┌─────────────────────────────┐
-│          Frontend           │
-│        React + TSX          │
-│                             │
-│  Login • Home • Circles     │
-│  Messages • Files • Admin   │
-└──────────────┬──────────────┘
-               │
-               │ HTTP / REST API
-               ▼
-┌─────────────────────────────┐
-│           Backend           │
-│       Node.js + Express     │
-│                             │
-│ Auth • Users • Conversations│
-│ Messages • Circles • Calls  │
-└──────────────┬──────────────┘
-               │
-        ┌──────┴──────┐
-        │             │
-        ▼             ▼
-   MongoDB        Socket.IO
-   Database       Real-time
-                  Communication
+                         ┌──────────────────────┐
+                         │      Frontend        │
+                         │ React + TypeScript   │
+                         │   TanStack Router   │
+                         └──────────┬───────────┘
+                                    │
+                              HTTPS / TLS
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │     API Gateway      │
+                         │     Port: 4000       │
+                         │ Express + TypeScript │
+                         │    Load Shedding     │
+                         └──────────┬───────────┘
+                                    │
+          ┌─────────────────────────┼─────────────────────────┐
+          │                         │                         │
+          ▼                         ▼                         ▼
+ ┌────────────────┐       ┌────────────────┐       ┌────────────────┐
+ │ Auth Service   │       │ User Service   │       │Message Service │
+ │    :5001       │       │    :5002       │       │    :5003       │
+ └────────────────┘       └────────────────┘       └────────────────┘
+          │                         │                         │
+          └─────────────────────────┼─────────────────────────┘
+                                    │
+          ┌─────────────────────────┼─────────────────────────┐
+          │                         │                         │
+          ▼                         ▼                         ▼
+ ┌────────────────┐       ┌────────────────┐       ┌────────────────┐
+ │ Circle Service │       │ Notification   │       │  Call Service  │
+ │    :5004       │       │    Service     │       │    :5006       │
+ └────────────────┘       │    :5005       │       └────────────────┘
+                          └────────────────┘
 ```
 
 ---
 
-## 🧰 Technology Stack
+## 🧩 Services
+
+| Service              |   Port | Responsibility                                        |
+| -------------------- | -----: | ----------------------------------------------------- |
+| API Gateway          | `4000` | Central entry point, routing and load shedding        |
+| Auth Service         | `5001` | Authentication, login, registration and authorization |
+| User Service         | `5002` | User-related operations                               |
+| Message Service      | `5003` | Conversations, messages and real-time messaging       |
+| Circle Service       | `5004` | Circle/group management                               |
+| Notification Service | `5005` | Notifications                                         |
+| Call Service         | `5006` | Audio/video call signaling and meeting communication  |
+
+---
+
+## 💻 Technology Stack
 
 ### Frontend
 
 * React
-* TypeScript / TSX
+* TypeScript
+* Vite
 * TanStack Router
-* Lucide Icons
-* Sonner
-* REST API integration
+* Tailwind CSS
+* Lucide React
+* Socket.IO Client
+* WebRTC
 
 ### Backend
 
 * Node.js
 * Express.js
-* TypeScript / TSX
+* TypeScript
+* Socket.IO
 * MongoDB
 * Mongoose
-* Socket.IO
-* JWT
 * Zod
+* JWT
 * Password hashing
-* Rate limiting
+* HTTP Proxy Middleware
 
-### Development Tools
+### Security
 
-* Git
-* GitHub
-* npm
-* Postman
-* Visual Studio Code
+* JWT Authentication
+* Password Hashing
+* HTTPS/TLS
+* Zod Input Validation
+* Role-Based Access Control
+* Rate Limiting
+* Secure environment variables
+
+---
+
+## 🔐 Security Architecture
+
+Security is implemented at multiple layers.
+
+```text
+                    Velora Circle
+                         │
+                         ▼
+                  HTTPS / TLS
+                         │
+                         ▼
+                  API Gateway
+                         │
+             ┌───────────┴───────────┐
+             ▼                       ▼
+       Rate Limiting            Load Shedding
+             │
+             ▼
+      JWT Authentication
+             │
+             ▼
+       Input Validation
+          (Zod)
+             │
+             ▼
+            RBAC
+             │
+             ▼
+       Protected Services
+```
+
+### Authentication
+
+Users authenticate using JWT tokens. Protected API routes verify the token before allowing access to secured resources.
+
+### Password Security
+
+User passwords are stored using password hashing rather than plain text.
+
+### Input Validation
+
+**Zod** is used to validate incoming request data such as:
+
+* User names
+* Email addresses
+* Passwords
+* Message content
+* Other API request fields
+
+Invalid input is rejected before it reaches the main application logic.
+
+### Role-Based Access Control
+
+Different roles can have different permissions within the system.
+
+For example, administrative operations are restricted to authorized users.
+
+### Rate Limiting
+
+Rate limiting helps prevent excessive requests, particularly against sensitive endpoints such as authentication.
+
+### HTTPS/TLS
+
+HTTPS/TLS is used to protect communication between the client and backend services during secure local development.
+
+---
+
+## 💬 Messaging
+
+Velora Circle supports private communication between users.
+
+The messaging system includes:
+
+* One-to-one conversations
+* Message sending and retrieval
+* Message validation
+* Real-time communication
+* Conversation management
+* Protected messaging endpoints
+
+Messages are handled by the **Message Service**.
+
+---
+
+## 👥 Circles
+
+Circles provide group-based communication.
+
+The Circle system supports:
+
+* Creating Circles
+* Managing Circle information
+* Adding members
+* Circle conversations
+* Privacy-focused member visibility
+* Administrative Circle management
+
+A key privacy requirement of Velora Circle is that **ordinary Circle members should not be able to browse the complete membership directory**, while authorized administrators can manage Circle membership.
+
+---
+
+## 📹 Real-Time Meetings
+
+Velora Circle provides real-time audio/video communication using **WebRTC**.
+
+Meeting functionality includes:
+
+* Camera
+* Microphone
+* Audio/video communication
+* Screen sharing
+* Multi-user meeting support
+* Call signaling through Socket.IO
+
+### WebRTC Architecture
+
+```text
+             User A
+                │
+                │ WebRTC
+                │
+                ▼
+             User B
+
+        Socket.IO is used for
+          signaling:
+
+   Offer → Signaling → Answer
+   ICE Candidate ↔ ICE Candidate
+
+        WebRTC handles the
+        actual media stream.
+```
+
+The **Call Service** manages signaling, while WebRTC handles peer-to-peer media communication.
+
+---
+
+## 🖥️ Screen Sharing
+
+Users can share their screen during meetings using the browser's `getDisplayMedia()` API.
+
+The screen-sharing track can replace the camera video track during an active meeting.
+
+When screen sharing stops, the camera stream can be restored.
+
+---
+
+## ⚡ Real-Time Communication
+
+Velora Circle uses **Socket.IO** for real-time events.
+
+Socket communication is used for areas such as:
+
+* Messaging
+* Call signaling
+* Meeting events
+* Call invitations
+* Call acceptance/rejection
+* ICE candidates
+* Real-time call updates
+
+---
+
+## 🌐 API Gateway
+
+The API Gateway provides a centralized entry point for frontend requests.
+
+```text
+Frontend
+   │
+   ▼
+API Gateway :4000
+   │
+   ├── /auth       → Auth Service
+   ├── /users      → User Service
+   ├── /messages   → Message Service
+   ├── /circles    → Circle Service
+   ├── /notifications → Notification Service
+   └── /calls      → Call Service
+```
+
+The gateway also includes **load shedding**, which helps protect backend services when the system receives excessive traffic.
 
 ---
 
@@ -156,23 +317,25 @@ The backend validates authentication and authorization before allowing access to
 ```text
 Veloracircle-main/
 │
-├── backend/
-│   ├── controllers/
-│   ├── middleware/
-│   ├── models/
-│   ├── routes/
-│   ├── socket/
-│   ├── config/
-│   └── server.ts
-│
 ├── frontend/
-│   └── src/
-│       ├── components/
-│       ├── hooks/
-│       ├── lib/
-│       ├── routes/
-│       ├── router.tsx
-│       └── ...
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── ...
+│
+├── gateway/
+│   ├── src/
+│   ├── package.json
+│   └── ...
+│
+├── services/
+│   │
+│   ├── auth-service/
+│   ├── user-service/
+│   ├── message-service/
+│   ├── circle-service/
+│   ├── notification-service/
+│   └── call-service/
 │
 ├── docs/
 │
@@ -182,249 +345,224 @@ Veloracircle-main/
 
 ---
 
-## 🔄 Application Flow
+## ⚙️ Local Development
 
-```text
-User
- │
- ▼
-Login / Registration
- │
- ▼
-JWT Authentication
- │
- ▼
-Protected Application
- │
- ├───────────────┐
- ▼               ▼
-Home          Messages
- │               │
- ▼               ▼
-Circles       Conversations
- │               │
- ▼               ▼
-Members        Messages
- │
- ▼
-Admin Controls
-```
+### Prerequisites
+
+Make sure the following are installed:
+
+* Node.js
+* npm
+* MongoDB
+* Git
 
 ---
 
-## 💬 Messaging Flow
-
-```text
-User
-  │
-  │ Send Message
-  ▼
-Frontend
-  │
-  │ POST /api/messages
-  ▼
-Express API
-  │
-  ├── Authentication Check
-  ├── Authorization Check
-  ├── Input Validation
-  │
-  ▼
-Message Controller
-  │
-  ▼
-MongoDB
-  │
-  ▼
-Stored Message
-```
-
----
-
-## 🔒 Privacy Model
-
-Velora Circle is designed with privacy as an important part of the application architecture.
-
-For private circles:
-
-* Circle membership information is protected.
-* Regular members do not have unrestricted access to the member directory.
-* Administrative users have controlled access to membership information.
-* Protected API endpoints verify the authenticated user's permissions.
-
-This helps prevent unnecessary exposure of participant information.
-
----
-
-## 🧪 API Testing
-
-The backend APIs can be tested using **Postman**.
-
-Example authentication flow:
-
-```text
-Register
-   ↓
-Login
-   ↓
-Receive JWT
-   ↓
-Use JWT in Authorization Header
-   ↓
-Access Protected APIs
-```
-
-Example protected request:
-
-```text
-Authorization: Bearer <JWT_TOKEN>
-```
-
----
-
-## ⚙️ Installation & Setup
-
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/PURNIMASHAH12/Veloracircle-main.git
 cd Veloracircle-main
 ```
 
-### 2. Install backend dependencies
+---
 
-```bash
-cd backend
-npm install
-```
+### 2. Install Dependencies
 
-### 3. Configure environment variables
-
-Create a `.env` file inside the `backend` directory.
+Install dependencies for the frontend, gateway, and individual services.
 
 Example:
-
-```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-```
-
-Do not commit your `.env` file to GitHub.
-
-### 4. Start the backend
-
-```bash
-npm run dev
-```
-
-The backend runs on:
-
-```text
-http://localhost:5000
-```
-
-### 5. Install frontend dependencies
-
-Open another terminal:
 
 ```bash
 cd frontend
 npm install
 ```
 
-### 6. Start the frontend
+Then install dependencies for the gateway and services:
 
 ```bash
-npm start
+cd ../gateway
+npm install
 ```
 
-The frontend will run on the configured development port.
+Repeat for each service:
+
+```text
+services/auth-service
+services/user-service
+services/message-service
+services/circle-service
+services/notification-service
+services/call-service
+```
 
 ---
 
-## 🔑 Environment Variables
+### 3. Environment Variables
 
-| Variable     | Description                        |
-| ------------ | ---------------------------------- |
-| `PORT`       | Backend server port                |
-| `MONGO_URI`  | MongoDB connection string          |
-| `JWT_SECRET` | Secret used for JWT authentication |
+Each service should use its own environment configuration where required.
 
-> Never upload real credentials, database URLs, API keys, or JWT secrets to GitHub.
+Example:
+
+```env
+PORT=5001
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+```
+
+Do **not** commit real credentials, JWT secrets, database passwords, or private TLS keys to GitHub.
+
+Use `.env.example` files to document required environment variables.
+
+---
+
+## ▶️ Running the Application
+
+Start the services individually during development.
+
+Example:
+
+```bash
+cd services/auth-service
+npm run dev
+```
+
+Run the other services in their respective directories.
+
+Start the API Gateway:
+
+```bash
+cd gateway
+npm run dev
+```
+
+Start the frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend runs on the Vite development server and communicates with the backend through the API Gateway.
 
 ---
 
 ## 🧪 Testing
 
-The application APIs can be tested using Postman.
-
-Important test cases include:
+Velora Circle's backend development included testing of important authentication and authorization flows, including:
 
 * User registration
 * User login
-* Invalid login credentials
-* JWT validation
-* Expired/invalid token
-* Protected route access
-* Role-based access
+* JWT authentication
+* `/auth/me`
+* Invalid token handling
+* Expired token handling
+* Input validation
+* Access control
+* Rate limiting
 * Circle creation
-* Circle membership access
-* Conversation creation
+* Circle member access
+* Direct conversation creation
 * Message sending
 * Message retrieval
-* Message validation
-* Rate limiting
 
 ---
 
-## 📌 Current Project Status
+## 🔄 Application Flow
 
-Velora Circle is an ongoing full-stack project.
+A typical authenticated request follows this path:
 
-Implemented functionality includes:
-
-* Authentication
-* JWT authorization
-* Password hashing
-* Input validation
-* Rate limiting
-* User management
-* Private circles
-* Role-based permissions
-* One-to-one conversations
-* Message persistence
-* REST APIs
-* Socket.IO communication
-* Calling functionality
-
-Additional features and improvements may be added as development continues.
-
----
-
-## 🎯 Project Goals
-
-The main goals of Velora Circle are to:
-
-* Build a privacy-focused communication platform
-* Practice secure full-stack application development
-* Implement authentication and authorization correctly
-* Learn real-time communication
-* Work with REST APIs and WebSockets
-* Build scalable backend architecture
-* Apply software security concepts in a practical project
+```text
+User
+ │
+ ▼
+React Frontend
+ │
+ │ HTTPS
+ ▼
+API Gateway
+ │
+ ▼
+JWT Verification
+ │
+ ▼
+Target Microservice
+ │
+ ▼
+Validation / Authorization
+ │
+ ▼
+Database
+ │
+ ▼
+Response
+ │
+ ▼
+Frontend
+```
 
 ---
 
-## 👩‍💻 Developer
+## 🛡️ Privacy Design
+
+Privacy is an important part of Velora Circle.
+
+The system is designed around principles such as:
+
+* Protected authentication
+* Private conversations
+* Role-based access
+* Restricted Circle membership visibility
+* Secure communication
+* Environment-based secret management
+* HTTPS/TLS
+* Controlled API access
+
+The application avoids exposing unnecessary participant information to ordinary users.
+
+---
+
+## 🎯 Project Objectives
+
+The main objectives of Velora Circle are:
+
+1. Build a secure communication platform.
+2. Implement a scalable microservices architecture.
+3. Provide private messaging and group communication.
+4. Support real-time audio/video meetings.
+5. Implement authentication and authorization.
+6. Protect sensitive user and communication data.
+7. Provide privacy-focused Circle management.
+8. Demonstrate modern full-stack development practices.
+
+---
+
+## 📚 Academic Project
+
+**Project Name:** Velora Circle
+**Program:** BSc CSIT
+**Project Type:** Full-Stack Web Application
+**Architecture:** Microservices
+**Frontend:** React + TypeScript
+**Backend:** Node.js + Express + TypeScript
+**Database:** MongoDB
+
+---
+
+## 👩‍💻 Author
 
 **Purnima Shah**
 
 BSc CSIT Student
-Full-Stack Development | MERN Stack | Backend & Web Security
 
 ---
 
 ## 📄 License
 
-This project is developed for educational and portfolio purposes.
+This project was developed as an academic/software development project.
+
+---
+
+## ⭐ Acknowledgement
+
+Velora Circle was developed to explore secure web application development, microservices architecture, real-time communication, WebRTC, authentication, authorization, and privacy-focused system design.
