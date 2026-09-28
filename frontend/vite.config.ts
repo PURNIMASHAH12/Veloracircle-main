@@ -12,34 +12,45 @@ import { nitro } from "nitro/vite";
 
 import fs from "node:fs";
 
-export default defineConfig(({ command }) => ({
-  plugins: [
-    tsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
+export default defineConfig(({ command }) => {
+  const hasCerts =
+    fs.existsSync("./certs/localhost-key.pem") &&
+    fs.existsSync("./certs/localhost.pem");
 
-    tailwindcss(),
+  return {
+    plugins: [
+      tsConfigPaths({
+        projects: ["./tsconfig.json"],
+      }),
 
-    tanstackStart({
-      server: {
-        entry: "server",
-      },
-    }),
+      tailwindcss(),
 
-    viteReact(),
+      tanstackStart({
+        server: {
+          entry: "server",
+        },
+      }),
 
-    command === "build"
-      ? nitro()
-      : undefined,
-  ].filter(Boolean),
+      viteReact(),
 
-  server: {
-    host: "0.0.0.0",
-    port: 5173,
-    https: {
-  key: fs.readFileSync("./certs/localhost-key.pem"),
-  cert: fs.readFileSync("./certs/localhost.pem"),
-},
+      command === "build"
+        ? nitro({
+            preset: process.env.NITRO_PRESET || "cloudflare-pages",
+          })
+        : undefined,
+    ].filter(Boolean),
+
+    server: {
+      host: "0.0.0.0",
+      port: 5173,
+      ...(hasCerts
+        ? {
+            https: {
+              key: fs.readFileSync("./certs/localhost-key.pem"),
+              cert: fs.readFileSync("./certs/localhost.pem"),
+            },
+          }
+        : {}),
 
     proxy: {
       "/api": {
@@ -67,4 +78,5 @@ export default defineConfig(({ command }) => ({
       },
     },
   },
-}));
+};
+});
